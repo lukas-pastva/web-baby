@@ -103,3 +103,7 @@ export default function FeedTable({ rows, onUpdate, onDelete }) {
             ))}
           </tbody>
         </table>
+      )}
+    </>
+  );
+}
