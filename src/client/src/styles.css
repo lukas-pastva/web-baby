@@ -11,7 +11,7 @@ header.mod-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  flex-wrap: wrap;                /* let nav wrap below title on mobile */
+  flex-wrap: wrap;
 }
 header.mod-header h1 { margin: 0; font-size: 1.4rem; }
 
@@ -20,7 +20,7 @@ header.mod-header nav {
   display: flex;
   gap: .5rem;
   flex-wrap: wrap;
-  margin-top: .4rem;              /* little space below title on wrap */
+  margin-top: .4rem;
 }
 header.mod-header nav a {
   display: inline-block;
@@ -40,13 +40,13 @@ header.mod-header nav a:hover {
 }
 header.mod-header nav a.active,
 header.mod-header nav a.active:hover {
-  background: #18be94;            /* selected page */
+  background: #18be94;
   color: #fff;
   font-weight: 600;
 }
 
 /* ───────────────────────────────────────────────────────────── layout */
-main { padding: 1rem; }     /* full-width */
+main { padding: 1rem; }
 
 .card {
   background: #fff;
@@ -62,14 +62,16 @@ button, input, select { font-size: 1rem; }
 .btn:disabled { opacity: .6; cursor: not-allowed; }
 .btn-light  { background: transparent; border: 1px solid #18be94; color: #18be94; padding: .35rem .8rem; border-radius: 4px; cursor: pointer; }
 
-/* tables */
-table               { width: 100%; border-collapse: collapse; }
-th, td              { padding: .4rem .6rem; text-align: left; font-size: .95rem; }
-tbody tr:nth-child(odd) { background: #fbfbfb; }
+/* ───────────────────────────────────────────────────────────── tables */
+table                { width: 100%; border-collapse: collapse; }
+thead th             { border-bottom: 2px solid #d2d8e0; }
+th, td               { padding: .5rem .6rem; text-align: left; font-size: .95rem; }
+tbody tr             { border-bottom: 1px solid #e5e9f0; }
+tbody tr:nth-child(odd)  { background: #f5f7fa; }
+tbody tr:nth-child(even) { background: #ffffff; }
 
 /* ───────────────────────────────────────────────────────── mobile */
 @media (max-width: 600px) {
-  html  { font-size: 92%; }       /* slightly smaller but still readable */
+  html  { font-size: 92%; }
   header.mod-header h1 { font-size: 1.25rem; }
-  /* nav already wraps; no extra changes needed */
 }

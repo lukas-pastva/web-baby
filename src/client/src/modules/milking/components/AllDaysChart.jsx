@@ -20,13 +20,11 @@ export default function AllDaysChart({ labels, recommended, actual }) {
         label           : "Recommended",
         data            : recommended,
         backgroundColor : "#d2d8e0",
-        stack           : "stack",
       },
       {
         label           : "Actual",
         data            : actual,
         backgroundColor : "#18be94",
-        stack           : "stack",
       },
     ],
   };
@@ -34,8 +32,11 @@ export default function AllDaysChart({ labels, recommended, actual }) {
   const options = {
     responsive          : true,
     maintainAspectRatio : false,
-    scales              : { x: { stacked: true }, y: { stacked: true } },
     plugins             : { legend: { position: "bottom" } },
+    scales              : {
+      x: { stacked: false },
+      y: { stacked: false, beginAtZero: true },
+    },
   };
 
   return (
