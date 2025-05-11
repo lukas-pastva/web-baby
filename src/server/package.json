@@ -9,7 +9,7 @@
   "dependencies": {
     "dotenv": "^16.4.0",
     "express": "^4.19.0",
-    "sequelize": "^7.10.0",
+    "sequelize": "^6.37.1",
     "mariadb": "^3.3.5"
   }
 }
