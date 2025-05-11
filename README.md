@@ -4,7 +4,6 @@ A lightweight full-stack app that helps new parents log and visualise their baby
 
 *Front-end*: React 18 + Vite | *Back-end*: Express + Sequelize (MariaDB) | *CI/CD*: GitHub Actions → Docker Hub  
 Everything ships in **one Docker image** so you can run it anywhere with
-
 | Variable          | Required | Example                                                    |
 |-------------------|----------|------------------------------------------------------------|
 | **DATABASE_URL**  | ✓*       | `mysql://user:pass@db:3306/web_baby`                       |
@@ -15,8 +14,10 @@ Everything ships in **one Docker image** so you can run it anywhere with
 | DB_PASSWORD       |          | `hunter2`                                                  |
 | DB_PORT           |          | `3306`                                                     |
 | **BIRTH_TS**      |          | `2025-04-28T07:42:00Z` *(ISO)* or `1714288920000` *(ms)*   |
+| **CHILD_NAME**    |          | `Alice`                                                    |
+| **CHILD_SURNAME** |          | `Smith`                                                    |
 
 \* Provide either `DATABASE_URL` **or** the individual `DB_*` variables.
 
-`BIRTH_TS` is optional; if set, the UI shows the correct “age in days” and picks the
-matching entry from the *recommendations* table automatically.
+When `BIRTH_TS` is set the UI automatically shows the baby’s age and picks the
+matching daily-intake recommendation.

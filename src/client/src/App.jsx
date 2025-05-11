@@ -10,7 +10,12 @@ import MilkLogForm  from "./components/MilkLogForm.jsx";
 import MilkLogTable from "./components/MilkLogTable.jsx";
 import SummaryChart from "./components/SummaryChart.jsx";
 
-const birthTs = window.__ENV__?.birthTs ? new Date(window.__ENV__.birthTs) : null;
+/* ---- runtime config ------------------------------------------------- */
+const rt          = window.__ENV__ || {};
+const birthTs     = rt.birthTs     ? new Date(rt.birthTs) : null;
+const childName   = rt.childName   || "";
+const childSurname= rt.childSurname|| "";
+const fullName    = `${childName}${childSurname ? " " + childSurname : ""}`;
 
 export default function App() {
   const [recs, setRecs] = useState([]);
@@ -38,30 +43,37 @@ export default function App() {
     listLogs(`?from=${dayStr}&to=${dayStr}T23:59:59Z`).then(setLogs);
   }
 
-  /* ---- today’s recommendation ---- */
+  /* ---- today’s recommendation & age string ------------------------- */
   let recToday = null;
-  let ageInfo  = "";
+  let ageText  = "";
   if (birthTs) {
     const ageDays = differenceInCalendarDays(date, birthTs);
     recToday      = recs.find((r) => r.ageDays === ageDays);
 
-    /* human-friendly Y-M-D breakdown */
-    const dur = intervalToDuration({ start: birthTs, end: date });
-    ageInfo   = `${ageDays} days (${dur.months} months, ${dur.years} years)`;
+    const { years = 0, months = 0 } = intervalToDuration({
+      start: birthTs,
+      end  : date,
+    });
+
+    ageText = `${ageDays} days (${months} months, ${years} years)`;
   }
 
   const totalActual = logs.reduce((s, l) => s + l.amountMl, 0);
 
+  /* ---- UI ----------------------------------------------------------- */
   return (
     <>
       <header>
         <h1>Web-Baby</h1>
+
         <div style={{ textAlign: "right" }}>
+          {fullName && <strong>{fullName}</strong>}
+          {fullName && <br />}
           <span>{format(date, "eeee, d LLL yyyy")}</span>
-          {birthTs && (
+          {ageText && (
             <>
               <br />
-              <small>{ageInfo}</small>
+              <small>{ageText}</small>
             </>
           )}
         </div>
