@@ -5,11 +5,12 @@
     <title>Web-Baby – Milking tracker</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <!-- ⚠️  Load runtime config *before* the React bundle ---------------- -->
+    <!-- ①  Load runtime config first (classic script blocks parsing) -->
     <script src="/env.js"></script>
+
+    <!-- ②  The Vite bundle comes next (will be replaced by Rollup) -->
     <script type="module" src="./index.jsx"></script>
   </head>
-
   <body>
     <div id="root"></div>
   </body>
