@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { startOfToday } from "date-fns";
 import api           from "../api.js";
 import WeightForm    from "../components/WeightForm.jsx";
 import WeightTable   from "../components/WeightTable.jsx";
+import WeightChart   from "../components/WeightChart.jsx";
 
 const rt            = window.__ENV__ || {};
 const childName     = rt.childName   || "";
@@ -32,6 +33,17 @@ export default function WeightDashboard() {
     reload();
   }
 
+  /* ---- chart arrays ------------------------------------------------ */
+  const { labels, series } = useMemo(() => {
+    const sorted = [...weights].sort((a, b) =>
+      a.measuredAt < b.measuredAt ? -1 : 1
+    );
+    return {
+      labels:  sorted.map(w => w.measuredAt),
+      series:  sorted.map(w => w.weightGrams),
+    };
+  }, [weights]);
+
   /* ---- UI --------------------------------------------------------- */
   return (
     <>
@@ -52,6 +64,7 @@ export default function WeightDashboard() {
 
       <main>
         <WeightForm  onSave={handleSave} defaultDate={startOfToday()} />
+        <WeightChart labels={labels} weights={series} />
         <WeightTable rows={weights}
                      onUpdate={handleUpdate}
                      onDelete={handleDelete} />

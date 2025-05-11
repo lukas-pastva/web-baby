@@ -3,23 +3,49 @@
 html  { font-size: 95%; }
 body  { margin: 0; font-family: "Inter", sans-serif; background: #f9fafb; }
 
+/* ───────────────────────────────────────────────────────────── header */
 header.mod-header {
   background: #0f2733;
   color: #fff;
   padding: 0.75rem 1rem;
-  display: flex; align-items: center; justify-content: space-between;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;                /* let nav wrap below title on mobile */
 }
 header.mod-header h1 { margin: 0; font-size: 1.4rem; }
 
-header.mod-header nav a {
-  color: #fff;
-  text-decoration: none;
-  margin-right: 1rem;
+/* top-bar nav as BUTTONS */
+header.mod-header nav {
+  display: flex;
+  gap: .5rem;
+  flex-wrap: wrap;
+  margin-top: .4rem;              /* little space below title on wrap */
 }
-header.mod-header nav a:hover       { text-decoration: underline; }
-header.mod-header nav a.active      { font-weight: 600; }
-header.mod-header nav a.active:hover{ text-decoration: none; }
+header.mod-header nav a {
+  display: inline-block;
+  padding: .45rem .9rem;
+  border-radius: 4px;
+  border: 1px solid #18be94;
+  background: transparent;
+  color: #18be94;
+  font-size: 1rem;
+  text-decoration: none;
+  line-height: 1;
+  transition: background .15s, color .15s;
+}
+header.mod-header nav a:hover {
+  background: #18be94;
+  color: #fff;
+}
+header.mod-header nav a.active,
+header.mod-header nav a.active:hover {
+  background: #18be94;            /* selected page */
+  color: #fff;
+  font-weight: 600;
+}
 
+/* ───────────────────────────────────────────────────────────── layout */
 main { padding: 1rem; }     /* full-width */
 
 .card {
@@ -30,11 +56,20 @@ main { padding: 1rem; }     /* full-width */
   margin-bottom: 1.5rem;
 }
 
+/* buttons & form controls */
 button, input, select { font-size: 1rem; }
 .btn        { background: #18be94; color: #fff; border: none; padding: .4rem .9rem; border-radius: 4px; cursor: pointer; }
 .btn:disabled { opacity: .6; cursor: not-allowed; }
 .btn-light  { background: transparent; border: 1px solid #18be94; color: #18be94; padding: .35rem .8rem; border-radius: 4px; cursor: pointer; }
 
-table         { width: 100%; border-collapse: collapse; }
-th, td        { padding: .4rem .6rem; text-align: left; font-size: .95rem; }
+/* tables */
+table               { width: 100%; border-collapse: collapse; }
+th, td              { padding: .4rem .6rem; text-align: left; font-size: .95rem; }
 tbody tr:nth-child(odd) { background: #fbfbfb; }
+
+/* ───────────────────────────────────────────────────────── mobile */
+@media (max-width: 600px) {
+  html  { font-size: 92%; }       /* slightly smaller but still readable */
+  header.mod-header h1 { font-size: 1.25rem; }
+  /* nav already wraps; no extra changes needed */
+}
