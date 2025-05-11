@@ -15,18 +15,12 @@ import SummaryChart from "./components/SummaryChart.jsx";
 /* ------------------------------------------------------------------ */
 const rt = window.__ENV__ || {};
 
-/**
- * Parse BIRTH_TS provided either as an ISO string **or**
- * milliseconds-since-epoch. Returns `null` if absent / invalid.
- */
 function parseBirthTs(raw) {
   if (!raw) return null;
-
   const num = Number(raw);
-  if (!Number.isNaN(num)) return new Date(num);        // epoch (ms)
-
-  const iso = new Date(raw);                           // ISO
-  return Number.isNaN(iso.getTime()) ? null : iso;
+  if (!Number.isNaN(num)) return new Date(num);       // epoch-ms
+  const iso = new Date(raw);
+  return Number.isNaN(iso.getTime()) ? null : iso;    // ISO
 }
 
 const birthTs       = parseBirthTs(rt.birthTs);
@@ -99,6 +93,18 @@ export default function App() {
         </div>
       </header>
 
+      {/* date picker ── mobile-friendly, shows any day’s logs  */}
+      <div className="card" style={{ marginBottom: "1rem" }}>
+        <label>
+          Select date:&nbsp;
+          <input
+            type="date"
+            value={format(date, "yyyy-MM-dd")}
+            onChange={(e) => setDate(new Date(e.target.value))}
+          />
+        </label>
+      </div>
+
       <main>
         {error && <p style={{ color: "#c00" }}>{error}</p>}
 
@@ -107,7 +113,7 @@ export default function App() {
         </div>
 
         <div className="card">
-          <MilkLogTable logs={logs} />
+          <MilkLogTable logs={logs} date={date} />
         </div>
 
         <div className="card">
