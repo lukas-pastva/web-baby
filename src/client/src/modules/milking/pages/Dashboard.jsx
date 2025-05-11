@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { startOfToday, format, differenceInCalendarDays } from "date-fns";
 import api from "../api.js";
-import FeedForm   from "../components/FeedForm.jsx";
-import FeedTable  from "../components/FeedTable.jsx";
-import SummaryChart from "../components/SummaryChart.jsx";   /* ← fixed import */
+import FeedForm    from "../components/FeedForm.jsx";
+import FeedTable   from "../components/FeedTable.jsx";
+import SummaryChart from "../components/SummaryChart.jsx";
 
 const rt          = window.__ENV__ || {};
 const birthTs     = rt.birthTs ? new Date(rt.birthTs) : null;
@@ -49,7 +49,14 @@ export default function MilkingDashboard() {
   return (
     <>
       <header className="mod-header">
-        <h2>Milking</h2>
+        <div>
+          <h2 style={{ margin: 0 }}>Milking</h2>
+          <nav>
+            <a href="/milking">Today</a>
+            <a href="/milking/all">All days</a>
+          </nav>
+        </div>
+
         <div className="meta">
           <strong>{childName} {childSurname}</strong><br />
           {ageText && <small>{ageText}</small>}

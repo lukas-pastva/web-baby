@@ -1,27 +1,28 @@
 import React, { useEffect, useState } from "react";
 import { subDays, startOfDay, format } from "date-fns";
-import api        from "../api.js";
-import DayCard    from "../components/DayCard.jsx";
+import api      from "../api.js";
+import DayCard  from "../components/DayCard.jsx";
 
 const DAYS_PER_PAGE = 50;
 
-/**
- * Loads feeds backwards in time, 50 days at a time.
- * Groups everything client-side so the back-end needs no change.
- */
+const rt        = window.__ENV__ || {};
+const birthTs   = rt.birthTs ? new Date(rt.birthTs) : null;
+const childName = rt.childName   || "";
+const childSurname = rt.childSurname || "";
+
 export default function MilkingHistory() {
-  const [page, setPage]       = useState(0);   // 0 => newest 50 days
+  const [page, setPage]       = useState(0);
   const [recs, setRecs]       = useState([]);
   const [feedsByDay, setData] = useState({});
   const [err, setErr]         = useState("");
   const [loading, setLoading] = useState(false);
 
-  /* fetch static daily recommendations once */
+  /* recommendations */
   useEffect(() => {
     api.listRecs().then(setRecs).catch(e => setErr(e.message));
   }, []);
 
-  /* load current page of days */
+  /* load N×50-day pages */
   useEffect(() => {
     (async () => {
       setLoading(true);
@@ -33,56 +34,53 @@ export default function MilkingHistory() {
         const day  = format(date, "yyyy-MM-dd");
 
         promises.push(
-          api
-            .listFeeds(day)
-            .then((rows) => ({ day, date, rows }))
-            .catch((e) => ({ day, date, rows: [], error: e }))
+          api.listFeeds(day)
+             .then(rows => ({ day, date, rows }))
+             .catch(()  => ({ day, date, rows: [] }))
         );
       }
 
       const results = await Promise.all(promises);
-      setData((prev) => {
-        const next = { ...prev };
-        for (const r of results) next[r.day] = r;
-        return next;
-      });
+      setData(prev => Object.fromEntries(
+        [...Object.entries(prev), ...results.map(r => [r.day, r])]
+      ));
       setLoading(false);
     })();
   }, [page]);
 
-  /* helper: pick recommendation for a given age-in-days */
-  function recForAge(ageDays) {
-    const row = recs.find((r) => r.ageDays === ageDays);
-    return row ? row.totalMl : 0;
-  }
-
-  /* today at 00:00 to compute age-in-days */
-  const birthday = (() => {
-    const rt = window.__ENV__ || {};
-    return rt.birthTs ? new Date(rt.birthTs) : null;
-  })();
+  /* helper */
+  const recForAge = (age) =>
+    recs.find(r => r.ageDays === age)?.totalMl ?? 0;
 
   return (
     <main style={{ maxWidth: 820, margin: "0 auto", padding: "1rem" }}>
-      <h2>Milking - all days</h2>
+      <header className="mod-header" style={{ marginBottom: "1rem" }}>
+        <div>
+          <h2 style={{ margin: 0 }}>Milking – all days</h2>
+          <nav>
+            <a href="/milking">Today</a>
+            <a href="/milking/all">All days</a>
+          </nav>
+        </div>
+
+        <div className="meta">
+          <strong>{childName} {childSurname}</strong><br />
+        </div>
+      </header>
 
       {err && <p style={{ color: "#c00" }}>{err}</p>}
 
       {Object.values(feedsByDay)
-        .sort((a, b) => b.date - a.date)                // newest first
+        .sort((a, b) => b.date - a.date)
         .map(({ day, date, rows }) => {
           const ageDays =
-            birthday != null
-              ? Math.round((date - birthday) / 864e5)
-              : null;
-          const recToday = ageDays != null ? recForAge(ageDays) : 0;
-
+            birthTs ? Math.round((date - birthTs) / 864e5) : null;
           return (
             <DayCard
               key={day}
               date={date}
               feeds={rows}
-              recTotal={recToday}
+              recTotal={ageDays != null ? recForAge(ageDays) : 0}
             />
           );
         })}

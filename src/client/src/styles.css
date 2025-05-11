@@ -31,3 +31,11 @@ button, input, select {
 table { width: 100%; border-collapse: collapse; }
 th, td { padding: .4rem .6rem; text-align: left; font-size: .95rem; }
 tbody tr:nth-child(odd) { background: #fbfbfb; }
+/* … existing styles … */
+
+header.mod-header nav a {
+  color: #fff;
+  text-decoration: none;
+  margin-right: 1rem;
+}
+header.mod-header nav a:hover { text-decoration: underline; }
