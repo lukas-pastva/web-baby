@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { startOfToday } from "date-fns";
-import api           from "../../../../../server/src/modules/weight/api.js";
+import api           from "../api.js";
 import WeightForm    from "../components/WeightForm.jsx";
 import WeightTable   from "../components/WeightTable.jsx";
 
