@@ -24,8 +24,14 @@ export default function AllDaysChart({ labels, recommended, actual }) {
   const options = {
     responsive          : true,
     maintainAspectRatio : false,
-    plugins             : { legend: { display: false } },
-    scales              : {
+    plugins             : {
+      legend: {
+        display : true,
+        position: "top",
+      },
+      tooltip: { intersect: false },
+    },
+    scales: {
       x: { stacked: false },
       y: { stacked: false, beginAtZero: true },
     },
