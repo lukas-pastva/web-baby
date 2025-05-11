@@ -1,4 +1,3 @@
-export default function MilkingHistory() {
 import React, { useEffect, useState } from "react";
 import {
   startOfDay,
@@ -51,8 +50,8 @@ export default function MilkingHistory() {
         const day = format(date, "yyyy-MM-dd");
         batch.push(
           api.listFeeds(day)
-              .then(rows => ({ day, date, rows }))
-              .catch(()  => ({ day, date, rows: [] }))
+             .then(rows => ({ day, date, rows }))
+             .catch(()  => ({ day, date, rows: [] }))
         );
       }
 
@@ -71,20 +70,7 @@ export default function MilkingHistory() {
   const recForAge = (age) =>
     recs.find(r => r.ageDays === age)?.totalMl ?? 0;
 
-  /* ---- build arrays (newest → oldest) ----------------------------- */
-  const ordered = Object.values(feedsByDay).sort((a, b) => b.date - a.date);
-
-  const labels      = [];
-  const recommended = [];
-  const actual      = [];
-
-  ordered.forEach(({ date, rows }) => {
-    labels.push(format(date, "d LLL"));
-    const ageDays = differenceInCalendarDays(date, birthDay);
-    recommended.push(recForAge(ageDays));
-    actual.push(rows.reduce((s, f) => s + f.amountMl, 0));
-  });
-  /* ---- helpers ---------------------------------------------------- */
+  /* ---- refresh single day after edit/delete ----------------------- */
   const refreshDay = async (day) => {
     try {
       const rows = await api.listFeeds(day);
@@ -101,6 +87,20 @@ export default function MilkingHistory() {
     await api.deleteFeed(id).catch(e => setErr(e.message));
     refreshDay(day);
   }
+
+  /* ---- build arrays (newest → oldest) ----------------------------- */
+  const ordered = Object.values(feedsByDay).sort((a, b) => b.date - a.date);
+
+  const labels      = [];
+  const recommended = [];
+  const actual      = [];
+
+  ordered.forEach(({ date, rows }) => {
+    labels.push(format(date, "d LLL"));
+    const ageDays = differenceInCalendarDays(date, birthDay);
+    recommended.push(recForAge(ageDays));
+    actual.push(rows.reduce((s, f) => s + f.amountMl, 0));
+  });
 
   /* ---- UI --------------------------------------------------------- */
   return (
@@ -136,7 +136,6 @@ export default function MilkingHistory() {
           />
         ))}
 
-
         <div style={{ textAlign: "center", margin: "1.5rem 0" }}>
           {loading ? (
             <p>Loading…</p>
@@ -152,4 +151,3 @@ export default function MilkingHistory() {
     </>
   );
 }
-  
