@@ -53,19 +53,19 @@ export default function MilkingHistory() {
     recs.find(r => r.ageDays === age)?.totalMl ?? 0;
 
   return (
-    <main style={{ maxWidth: 820, margin: "0 auto", padding: "1rem" }}>
       <header className="mod-header" style={{ marginBottom: "1rem" }}>
-        <div>
-          <h2 style={{ margin: 0 }}>Milking – all days</h2>
-          <nav>
-            <a href="/milking">Today</a>
-            <a href="/milking/all">All days</a>
-          </nav>
-        </div>
+      <div>
+        <h2 style={{ margin: 0 }}>Milking – all days</h2>
+        <nav>
+          <a href="/milking">Today</a>
+          <a href="/milking/all">All days</a>
+          <a href="/help">Help</a>
+        </nav>
+      </div>
 
-        <div className="meta">
-          <strong>{childName} {childSurname}</strong><br />
-        </div>
+      <div className="meta">
+        <strong>{childName} {childSurname}</strong><br />
+      </div>
       </header>
 
       {err && <p style={{ color: "#c00" }}>{err}</p>}

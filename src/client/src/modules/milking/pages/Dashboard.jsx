@@ -45,7 +45,6 @@ export default function MilkingDashboard() {
   }
 
   const totalMl = feeds.reduce((s, f) => s + f.amountMl, 0);
-
   return (
     <>
       <header className="mod-header">
@@ -54,6 +53,7 @@ export default function MilkingDashboard() {
           <nav>
             <a href="/milking">Today</a>
             <a href="/milking/all">All days</a>
+            <a href="/help">Help</a>
           </nav>
         </div>
 
@@ -62,7 +62,7 @@ export default function MilkingDashboard() {
           {ageText && <small>{ageText}</small>}
         </div>
       </header>
-
+      
       {err && <p className="error">{err}</p>}
 
       <FeedForm  onSave={handleSave} defaultDate={date} />

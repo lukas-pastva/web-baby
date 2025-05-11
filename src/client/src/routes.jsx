@@ -1,12 +1,15 @@
 import React, { Suspense, lazy } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
-/* lazy-loaded pages (one per module / view) */
+/* lazy-loaded pages */
 const MilkingDashboard = lazy(() =>
   import("./modules/milking/pages/Dashboard.jsx")
 );
 const MilkingHistory = lazy(() =>
   import("./modules/milking/pages/History.jsx")
+);
+const HelpPage = lazy(() =>
+  import("./modules/help/Help.jsx")
 );
 
 export default function AppRoutes() {
@@ -17,6 +20,7 @@ export default function AppRoutes() {
           <Route path="/"            element={<Navigate to="/milking" />} />
           <Route path="/milking"     element={<MilkingDashboard />} />
           <Route path="/milking/all" element={<MilkingHistory />} />
+          <Route path="/help"        element={<HelpPage />} />
         </Routes>
       </Suspense>
     </BrowserRouter>
