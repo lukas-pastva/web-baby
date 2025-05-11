@@ -1,19 +1,13 @@
 import React, { useState } from "react";
 import { format, formatISO } from "date-fns";
 
-/**
- * Form to add a single feed.
- * Lets the user pick DATE + TIME explicitly (defaults = now).
- */
-export default function FeedForm({ onSave, defaultDate }) {   /* ← fixed name */
-  /* --- initial “now” values ------------------------------------------- */
+export default function FeedForm({ onSave, defaultDate }) {
   const now              = defaultDate ? new Date(defaultDate) : new Date();
   const [amount, setAmt] = useState("");
   const [type, setType]  = useState("BREAST_DIRECT");
   const [date, setDate]  = useState(format(now, "yyyy-MM-dd"));
   const [time, setTime]  = useState(format(now, "HH:mm"));
 
-  /* --- submit handler -------------------------------------------------- */
   async function handleSubmit(e) {
     e.preventDefault();
     if (!amount) return;
@@ -25,9 +19,11 @@ export default function FeedForm({ onSave, defaultDate }) {   /* ← fixed name 
       feedingType: type,
     });
 
-    /* quick reset: keep same date/time, clear amount */
+    /* reset amount + time to *current moment* for quick next entry */
     setAmt("");
+    setTime(format(new Date(), "HH:mm"));
   }
+
 
   /* --- render ---------------------------------------------------------- */
   return (

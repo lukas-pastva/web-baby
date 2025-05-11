@@ -69,7 +69,7 @@ export default function MilkingDashboard() {
   return (
     <>
       <header className="mod-header">
-        <h1>Web-Baby</h1>
+        <h1>{(window.__ENV__ || {}).appTitle || "Web-Baby"}</h1>
 
         <nav>
           <a href="/milking"      className={path() === "/milking"      ? "active" : ""}>Today</a>

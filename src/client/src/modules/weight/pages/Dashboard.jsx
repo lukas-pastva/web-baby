@@ -48,7 +48,7 @@ export default function WeightDashboard() {
   return (
     <>
       <header className="mod-header">
-        <h1>Web-Baby</h1>
+        <h1>{(window.__ENV__ || {}).appTitle || "Web-Baby"}</h1>
         <nav>
           <a href="/milking"      className={path() === "/milking"      ? "active":""}>Today</a>
           <a href="/milking/all"  className={path().startsWith("/milking/all")?"active":""}>All days</a>

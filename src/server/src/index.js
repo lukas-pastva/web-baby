@@ -33,6 +33,7 @@ app.get("/env.js", (_req, res) => {
       birthTs     : normBirthTs(process.env.BIRTH_TS),
       childName   : process.env.CHILD_NAME   || "",
       childSurname: process.env.CHILD_SURNAME|| "",
+      appTitle    : process.env.APP_TITLE    || "Web-Baby",
     })};`
   );
 });

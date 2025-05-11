@@ -16,23 +16,15 @@ export default function AllDaysChart({ labels, recommended, actual }) {
   const data = {
     labels,
     datasets: [
-      {
-        label           : "Recommended",
-        data            : recommended,
-        backgroundColor : "#d2d8e0",
-      },
-      {
-        label           : "Actual",
-        data            : actual,
-        backgroundColor : "#18be94",
-      },
+      { label: "Recommended", data: recommended, backgroundColor: "#d2d8e0" },
+      { label: "Actual",      data: actual,      backgroundColor: "#18be94" },
     ],
   };
 
   const options = {
     responsive          : true,
     maintainAspectRatio : false,
-    plugins             : { legend: { position: "bottom" } },
+    plugins             : { legend: { display: false } },
     scales              : {
       x: { stacked: false },
       y: { stacked: false, beginAtZero: true },
