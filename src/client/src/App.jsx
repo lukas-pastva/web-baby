@@ -10,25 +10,45 @@ import MilkLogForm  from "./components/MilkLogForm.jsx";
 import MilkLogTable from "./components/MilkLogTable.jsx";
 import SummaryChart from "./components/SummaryChart.jsx";
 
-/* ---- runtime config ------------------------------------------------- */
-const rt          = window.__ENV__ || {};
-const birthTs     = rt.birthTs     ? new Date(rt.birthTs) : null;
-const childName   = rt.childName   || "";
-const childSurname= rt.childSurname|| "";
-const fullName    = `${childName}${childSurname ? " " + childSurname : ""}`;
+/* ------------------------------------------------------------------ */
+/*  Runtime config & helpers                                          */
+/* ------------------------------------------------------------------ */
+const rt = window.__ENV__ || {};
 
+/**
+ * Parse BIRTH_TS provided either as an ISO string **or**
+ * milliseconds-since-epoch. Returns `null` if absent / invalid.
+ */
+function parseBirthTs(raw) {
+  if (!raw) return null;
+
+  const num = Number(raw);
+  if (!Number.isNaN(num)) return new Date(num);        // epoch (ms)
+
+  const iso = new Date(raw);                           // ISO
+  return Number.isNaN(iso.getTime()) ? null : iso;
+}
+
+const birthTs       = parseBirthTs(rt.birthTs);
+const childName     = rt.childName   || "";
+const childSurname  = rt.childSurname|| "";
+const fullName      = `${childName}${childSurname ? " " + childSurname : ""}`;
+
+/* ------------------------------------------------------------------ */
+/*  Component                                                         */
+/* ------------------------------------------------------------------ */
 export default function App() {
-  const [recs, setRecs] = useState([]);
-  const [logs, setLogs] = useState([]);
-  const [date, setDate] = useState(startOfToday());
-  const [error, setError] = useState("");
+  const [recs, setRecs]     = useState([]);
+  const [logs, setLogs]     = useState([]);
+  const [date, setDate]     = useState(startOfToday());
+  const [error, setError]   = useState("");
 
-  /* ---- static recommendations ---- */
+  /* ---- static recommendations ------------------------------------- */
   useEffect(() => {
     listRecommendations().then(setRecs).catch((e) => setError(e.message));
   }, []);
 
-  /* ---- logs for selected date ---- */
+  /* ---- logs for selected date ------------------------------------- */
   useEffect(() => {
     const dayStr = format(date, "yyyy-MM-dd");
     listLogs(`?from=${dayStr}&to=${dayStr}T23:59:59Z`)
@@ -36,14 +56,14 @@ export default function App() {
       .catch((e) => setError(e.message));
   }, [date]);
 
-  /* ---- insert handler ---- */
+  /* ---- insert handler --------------------------------------------- */
   async function handleInsert(data) {
     await insertLog(data).catch((e) => setError(e.message));
     const dayStr = format(date, "yyyy-MM-dd");
     listLogs(`?from=${dayStr}&to=${dayStr}T23:59:59Z`).then(setLogs);
   }
 
-  /* ---- today’s recommendation & age string ------------------------- */
+  /* ---- today’s recommendation & age string ------------------------ */
   let recToday = null;
   let ageText  = "";
   if (birthTs) {
@@ -60,7 +80,7 @@ export default function App() {
 
   const totalActual = logs.reduce((s, l) => s + l.amountMl, 0);
 
-  /* ---- UI ----------------------------------------------------------- */
+  /* ---- UI ---------------------------------------------------------- */
   return (
     <>
       <header>

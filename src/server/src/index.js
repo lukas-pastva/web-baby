@@ -51,12 +51,17 @@ app.post("/api/logs", async (req, res) => {
   res.json(row);
 });
 
-/* ─── runtime config endpoint ─────────────── */
+/* ─── runtime config endpoint ──────────────────────────────── */
 app.get("/env.js", (_req, res) => {
   res.type("application/javascript");
+
+  /** Normalise BIRTH_TS: keep ISO strings as-is, convert pure-digits to Number */
+  const normBirthTs = (v) =>
+    v && /^\d+$/.test(v) ? Number(v) : v || "";
+
   res.send(
     `window.__ENV__ = ${JSON.stringify({
-      birthTs     : process.env.BIRTH_TS     || "",
+      birthTs     : normBirthTs(process.env.BIRTH_TS),
       childName   : process.env.CHILD_NAME   || "",
       childSurname: process.env.CHILD_SURNAME|| "",
     })};`
