@@ -1,19 +1,22 @@
 import React, { Suspense, lazy } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
-/* lazy-load first module; more modules just add lines here */
+/* lazy-loaded pages (one per module / view) */
 const MilkingDashboard = lazy(() =>
   import("./modules/milking/pages/Dashboard.jsx")
+);
+const MilkingHistory = lazy(() =>
+  import("./modules/milking/pages/History.jsx")
 );
 
 export default function AppRoutes() {
   return (
     <BrowserRouter>
-      <Suspense fallback={<p>Loading…</p>}>
+      <Suspense fallback={<p style={{ padding: 20 }}>Loading…</p>}>
         <Routes>
-          <Route path="/"          element={<Navigate to="/milking" />} />
-          <Route path="/milking/*" element={<MilkingDashboard />} />
-          {/* <Route path="/sleep/*" element={<SleepDashboard />} /> */}
+          <Route path="/"            element={<Navigate to="/milking" />} />
+          <Route path="/milking"     element={<MilkingDashboard />} />
+          <Route path="/milking/all" element={<MilkingHistory />} />
         </Routes>
       </Suspense>
     </BrowserRouter>
