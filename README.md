@@ -4,3 +4,15 @@ A lightweight full-stack app that helps new parents log and visualise their baby
 
 *Front-end*: React 18 + Vite | *Back-end*: Express + Sequelize (MariaDB) | *CI/CD*: GitHub Actions → Docker Hub  
 Everything ships in **one Docker image** so you can run it anywhere with
+
+| Variable          | Required | Example                                                    |
+|-------------------|----------|------------------------------------------------------------|
+| **DATABASE_URL**  | ✓*       | `mysql://user:pass@db:3306/web_baby`                       |
+| — or —            |          |                                                            |
+| **DB_HOST**       | ✓        | `mariadb.default.svc.cluster.local`                        |
+| **DB_NAME**       | ✓        | `web_baby`                                                 |
+| DB_USER           |          | `webbaby`                                                  |
+| DB_PASSWORD       |          | `hunter2`                                                  |
+| DB_PORT           |          | `3306`                                                     |
+
+*Provide either the full `DATABASE_URL` **or** the individual `DB_*` variables.*
