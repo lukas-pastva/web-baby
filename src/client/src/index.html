@@ -5,10 +5,10 @@
     <title>Web-Baby – Milking tracker</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <!-- ①  Load runtime config first (classic script blocks parsing) -->
-    <script src="/env.js"></script>
+    <!-- ①  Runtime config (ignored by Vite) -->
+    <script src="/env.js" data-vite-ignore></script>
 
-    <!-- ②  The Vite bundle comes next (will be replaced by Rollup) -->
+    <!-- ②  Client bundle -->
     <script type="module" src="./index.jsx"></script>
   </head>
   <body>

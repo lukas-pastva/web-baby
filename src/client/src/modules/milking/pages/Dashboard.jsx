@@ -1,65 +1,61 @@
 import React, { useEffect, useState } from "react";
-import { startOfDay, addDays, format, differenceInCalendarDays } from "date-fns";
-import api      from "../api.js";
-import DayCard  from "../components/DayCard.jsx";
+import {
+  startOfToday,
+  format,
+  differenceInCalendarDays,
+} from "date-fns";
+import api from "../api.js";
+import FeedForm     from "../components/FeedForm.jsx";
+import FeedTable    from "../components/FeedTable.jsx";
+import SummaryChart from "../components/SummaryChart.jsx";
 
-const DAYS_PER_PAGE = 50;
-
-/* ─── runtime config ───────────────────────────────────────── */
+/* runtime config --------------------------------------------------- */
 const rt            = window.__ENV__ || {};
 const birthTs       = rt.birthTs ? new Date(rt.birthTs) : null;
 const childName     = rt.childName   || "";
 const childSurname  = rt.childSurname|| "";
 
-const birthDay = birthTs ? startOfDay(birthTs) : startOfDay(new Date());
+export default function MilkingDashboard() {
+  const [date, setDate]   = useState(startOfToday());
+  const [recs, setRecs]   = useState([]);
+  const [feeds, setFeeds] = useState([]);
+  const [err, setErr]     = useState("");
 
-export default function MilkingHistory() {
-  const [page, setPage]       = useState(0);        // 0 => birth-date … +49 days
-  const [recs, setRecs]       = useState([]);
-  const [feedsByDay, setData] = useState({});
-  const [err, setErr]         = useState("");
-  const [loading, setLoading] = useState(false);
-
-  /* ─── recommendations once ─────────────────────────────────────── */
+  /* static recommendations */
   useEffect(() => {
     api.listRecs().then(setRecs).catch(e => setErr(e.message));
   }, []);
 
-  /* ─── load current page (50 sequential days starting at birth) ─── */
+  /* feeds for selected date */
   useEffect(() => {
-    (async () => {
-      setLoading(true);
+    const day = format(date, "yyyy-MM-dd");
+    api.listFeeds(day).then(setFeeds).catch(e => setErr(e.message));
+  }, [date]);
 
-      const promises = [];
-      for (let i = 0; i < DAYS_PER_PAGE; i++) {
-        const date = addDays(birthDay, page * DAYS_PER_PAGE + i);
-        const day  = format(date, "yyyy-MM-dd");
-        promises.push(
-          api.listFeeds(day)
-             .then(rows => ({ day, date, rows }))
-             .catch(()  => ({ day, date, rows: [] }))
-        );
-      }
+  /* insert new feed */
+  async function handleSave(feed) {
+    await api.insertFeed(feed).catch(e => setErr(e.message));
+    const day = format(date, "yyyy-MM-dd");
+    api.listFeeds(day).then(setFeeds);
+  }
 
-      const results = await Promise.all(promises);
-      setData(prev =>
-        Object.fromEntries([
-          ...Object.entries(prev),
-          ...results.map(r => [r.day, r]),
-        ])
-      );
-      setLoading(false);
-    })();
-  }, [page]);
+  /* recommendation & age string */
+  let recToday = null,
+      ageText  = "";
+  if (birthTs) {
+    const ageDays = differenceInCalendarDays(date, birthTs);
+    recToday      = recs.find(r => r.ageDays === ageDays);
+    ageText       = `${ageDays} days`;
+  }
 
-  /* recommendation helper */
-  const recForAge = (age) => recs.find(r => r.ageDays === age)?.totalMl ?? 0;
+  const totalMl = feeds.reduce((s, f) => s + f.amountMl, 0);
 
+  /* UI -------------------------------------------------------------- */
   return (
-    <main style={{ maxWidth: 820, margin: "0 auto", padding: "1rem" }}>
-      <header className="mod-header" style={{ marginBottom: "1rem" }}>
+    <>
+      <header className="mod-header">
         <div>
-          <h2 style={{ margin: 0 }}>Milking – all days</h2>
+          <h2 style={{ margin: 0 }}>Milking</h2>
           <nav>
             <a href="/milking">Today</a>
             <a href="/milking/all">All days</a>
@@ -69,34 +65,19 @@ export default function MilkingHistory() {
 
         <div className="meta">
           <strong>{childName} {childSurname}</strong><br />
+          {ageText && <small>{ageText}</small>}
         </div>
       </header>
 
-      {err && <p style={{ color: "#c00" }}>{err}</p>}
+      {err && <p className="error">{err}</p>}
 
-      {Object.values(feedsByDay)
-        .sort((a, b) => a.date - b.date)          /* oldest → newest */
-        .map(({ day, date, rows }) => {
-          const ageDays = differenceInCalendarDays(date, birthDay);
-          return (
-            <DayCard
-              key={day}
-              date={date}
-              feeds={rows}
-              recTotal={recForAge(ageDays)}
-            />
-          );
-        })}
+      <FeedForm  onSave={handleSave} defaultDate={date} />
+      <FeedTable rows={feeds} />
 
-      <div style={{ textAlign: "center", margin: "1.5rem 0" }}>
-        {loading ? (
-          <p>Loading…</p>
-        ) : (
-          <button className="btn-light" onClick={() => setPage(page + 1)}>
-            Next&nbsp;{DAYS_PER_PAGE}&nbsp;days →
-          </button>
-        )}
-      </div>
-    </main>
+      <SummaryChart
+        recommended={recToday?.totalMl ?? 0}
+        actual={totalMl}
+      />
+    </>
   );
 }
