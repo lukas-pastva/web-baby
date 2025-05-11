@@ -1,3 +1,4 @@
+export default function MilkingHistory() {
 import React, { useEffect, useState } from "react";
 import {
   startOfDay,
@@ -50,8 +51,8 @@ export default function MilkingHistory() {
         const day = format(date, "yyyy-MM-dd");
         batch.push(
           api.listFeeds(day)
-             .then(rows => ({ day, date, rows }))
-             .catch(()  => ({ day, date, rows: [] }))
+              .then(rows => ({ day, date, rows }))
+              .catch(()  => ({ day, date, rows: [] }))
         );
       }
 
@@ -83,6 +84,23 @@ export default function MilkingHistory() {
     recommended.push(recForAge(ageDays));
     actual.push(rows.reduce((s, f) => s + f.amountMl, 0));
   });
+  /* ---- helpers ---------------------------------------------------- */
+  const refreshDay = async (day) => {
+    try {
+      const rows = await api.listFeeds(day);
+      setData(prev => ({ ...prev, [day]: { ...prev[day], rows } }));
+    } catch (e) { setErr(e.message); }
+  };
+
+  async function handleUpdate(day, id, payload) {
+    await api.updateFeed(id, payload).catch(e => setErr(e.message));
+    refreshDay(day);
+  }
+
+  async function handleDelete(day, id) {
+    await api.deleteFeed(id).catch(e => setErr(e.message));
+    refreshDay(day);
+  }
 
   /* ---- UI --------------------------------------------------------- */
   return (
@@ -109,8 +127,15 @@ export default function MilkingHistory() {
         )}
 
         {ordered.map(({ day, date, rows }) => (
-          <DayCard key={day} date={date} feeds={rows} />
+          <DayCard
+            key={day}
+            date={date}
+            feeds={rows}
+            onUpdate={(id, p) => handleUpdate(day, id, p)}
+            onDelete={(id)   => handleDelete(day, id)}
+          />
         ))}
+
 
         <div style={{ textAlign: "center", margin: "1.5rem 0" }}>
           {loading ? (

@@ -1,14 +1,22 @@
 import React, { useState } from "react";
-import { format } from "date-fns";
+import { format, formatISO } from "date-fns";
 
 /**
- * Sortable table with optional edit / delete actions.
- * If `onUpdate` or `onDelete` are omitted the buttons are hidden.
+ * Sortable, editable feed table.
+ * When Edit is clicked an inline form appears *below* the row.
  */
 export default function FeedTable({ rows, onUpdate, onDelete }) {
-  const [sortKey, setKey] = useState("fedAt");
-  const [asc, setAsc]     = useState(true);
+  const [sortKey, setKey]     = useState("fedAt");
+  const [asc, setAsc]         = useState(true);
+  const [editingId, setEdit]  = useState(null);
+  const [formVals, setForm]   = useState({
+    amount   : "",
+    type     : "BREAST_DIRECT",
+    datePart : "",
+    timePart : "",
+  });
 
+  /* ── helpers ──────────────────────────────────────────────────── */
   function sort(k) {
     setAsc(k === sortKey ? !asc : true);
     setKey(k);
@@ -19,43 +27,37 @@ export default function FeedTable({ rows, onUpdate, onDelete }) {
     return asc ? d : -d;
   });
 
-  /* ---------------------------------------------------------------- */
-  /*  Simple in-place edit using prompt() – keeps UI minimal          */
-  /* ---------------------------------------------------------------- */
-  async function handleEdit(feed) {
-    if (!onUpdate) return;
-
-    const amountMl = prompt("Amount (ml):", feed.amountMl);
-    if (amountMl === null) return;                        // cancelled
-
-    const feedingType = prompt(
-      "Feeding type (BREAST_DIRECT / BREAST_BOTTLE / FORMULA_PUMP / FORMULA_BOTTLE):",
-      feed.feedingType
-    );
-    if (feedingType === null) return;
-
-    const fedAt = prompt(
-      "Timestamp (ISO - leave empty to keep unchanged):",
-      feed.fedAt
-    );
-
-    const payload = {
-      amountMl   : Number(amountMl),
-      feedingType: feedingType.trim(),
-    };
-    if (fedAt && fedAt.trim()) payload.fedAt = fedAt.trim();
-
-    await onUpdate(feed.id, payload);
+  /* ── edit actions ─────────────────────────────────────────────── */
+  function beginEdit(feed) {
+    const dt = new Date(feed.fedAt);
+    setForm({
+      amount   : feed.amountMl,
+      type     : feed.feedingType,
+      datePart : format(dt, "yyyy-MM-dd"),
+      timePart : format(dt, "HH:mm"),
+    });
+    setEdit(feed.id);
   }
 
+  async function saveEdit(e) {
+    e.preventDefault();
+    const { amount, type, datePart, timePart } = formVals;
+    const fedAt = formatISO(new Date(`${datePart}T${timePart}`));
+    await onUpdate(editingId, {
+      amountMl   : Number(amount),
+      feedingType: type,
+      fedAt,
+    });
+    cancelEdit();
+  }
+
+  function cancelEdit() { setEdit(null); }
+
   async function handleDelete(id) {
-    if (!onDelete) return;
     if (confirm("Delete this feed entry?")) await onDelete(id);
   }
 
-  /* ---------------------------------------------------------------- */
-  /*  Render                                                          */
-  /* ---------------------------------------------------------------- */
+  /* ── UI ────────────────────────────────────────────────────────── */
   return (
     <>
       <h3>Feeds for the day</h3>
@@ -70,36 +72,82 @@ export default function FeedTable({ rows, onUpdate, onDelete }) {
               {(onUpdate || onDelete) && <th></th>}
             </tr>
           </thead>
+
           <tbody>
-            {sorted.map(f => (
-              <tr key={f.id}>
-                <td>{format(new Date(f.fedAt), "HH:mm")}</td>
-                <td>{f.amountMl}</td>
-                <td>{f.feedingType.replace("_", " ")}</td>
-                {(onUpdate || onDelete) && (
-                  <td style={{ whiteSpace: "nowrap" }}>
-                    {onUpdate && (
-                      <button
-                        type="button"
-                        className="btn-light"
-                        onClick={() => handleEdit(f)}
-                        style={{ marginRight: ".4rem" }}
-                      >
-                        Edit
-                      </button>
-                    )}
-                    {onDelete && (
-                      <button
-                        type="button"
-                        className="btn-light"
-                        onClick={() => handleDelete(f.id)}
-                      >
-                        ×
-                      </button>
-                    )}
-                  </td>
+            {sorted.map((f, idx) => (
+              <React.Fragment key={f.id}>
+                <tr>
+                  <td>{format(new Date(f.fedAt), "HH:mm")}</td>
+                  <td>{f.amountMl}</td>
+                  <td>{f.feedingType.replace("_", " ")}</td>
+                  {(onUpdate || onDelete) && (
+                    <td style={{ whiteSpace: "nowrap" }}>
+                      {onUpdate && (
+                        <button
+                          type="button"
+                          className="btn-light"
+                          onClick={() => beginEdit(f)}
+                          style={{ marginRight: ".4rem" }}
+                        >
+                          Edit
+                        </button>
+                      )}
+                      {onDelete && (
+                        <button
+                          type="button"
+                          className="btn-light"
+                          onClick={() => handleDelete(f.id)}
+                        >
+                          ×
+                        </button>
+                      )}
+                    </td>
+                  )}
+                </tr>
+
+                {/* inline edit row */}
+                {editingId === f.id && (
+                  <tr>
+                    <td colSpan={4}>
+                      <form onSubmit={saveEdit} style={{ display: "flex", gap: ".5rem", flexWrap:"wrap" }}>
+                        <input
+                          type="number"
+                          value={formVals.amount}
+                          onChange={e => setForm({ ...formVals, amount: e.target.value })}
+                          min={0}
+                          style={{ width: 90 }}
+                          required
+                        />
+                        <select
+                          value={formVals.type}
+                          onChange={e => setForm({ ...formVals, type: e.target.value })}
+                        >
+                          <option value="BREAST_DIRECT">Breast – direct</option>
+                          <option value="BREAST_BOTTLE">Breast – bottle</option>
+                          <option value="FORMULA_PUMP">Formula – pump / tube</option>
+                          <option value="FORMULA_BOTTLE">Formula – bottle</option>
+                        </select>
+                        <input
+                          type="date"
+                          value={formVals.datePart}
+                          onChange={e => setForm({ ...formVals, datePart: e.target.value })}
+                          required
+                        />
+                        <input
+                          type="time"
+                          value={formVals.timePart}
+                          onChange={e => setForm({ ...formVals, timePart: e.target.value })}
+                          required
+                        />
+                        <button className="btn">Save</button>
+                        <button type="button" className="btn-light" onClick={cancelEdit}>
+                          Cancel
+                        </button>
+                      </form>
+                    </td>
+                  </tr>
                 )}
-              </tr>
+              </React.Fragment>
             ))}
           </tbody>
         </table>
