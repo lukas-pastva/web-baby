@@ -39,7 +39,7 @@ export default function AllDaysChart({ labels, recommended, actual }) {
   };
 
   return (
-    <div className="card" style={{ height: 340 }}>
+    <div className="card" style={{ height: 360 }}>
       <h3>Intake per day</h3>
       <Bar data={data} options={options} />
     </div>
