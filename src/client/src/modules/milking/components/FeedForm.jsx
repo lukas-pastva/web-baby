@@ -5,7 +5,7 @@ import { format, formatISO } from "date-fns";
  * Form to add a single feed.
  * Lets the user pick DATE + TIME explicitly (defaults = now).
  */
-export default function MilkLogForm({ onSave, defaultDate }) {
+export default function FeedForm({ onSave, defaultDate }) {   /* ← fixed name */
   /* --- initial “now” values ------------------------------------------- */
   const now              = defaultDate ? new Date(defaultDate) : new Date();
   const [amount, setAmt] = useState("");

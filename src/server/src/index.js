@@ -1,19 +1,14 @@
-import express from "express";
-import dotenv  from "dotenv";
-import cors    from "cors";
-import path    from "path";
+import express  from "express";
+import cors     from "cors";
+import path     from "path";
 import { fileURLToPath } from "url";
-import { Op }  from "sequelize";
+import dotenv   from "dotenv";
 
-import {
-  sync,
-  MilkLog,
-  Recommendation,
-  FeedingType,
-} from "./model.js";
+import milkingRoutes from "./modules/milking/routes.js";
+import { syncAll }   from "./modules/milking/seed.js";
 
 dotenv.config();
-await sync();                     // create tables if they’re missing
+await syncAll();                       // create tables + seed baseline
 
 const app  = express();
 const port = process.env.PORT || 8080;
@@ -22,43 +17,13 @@ const port = process.env.PORT || 8080;
 app.use(cors());
 app.use(express.json());
 
-/* ─── API ───────────────────────────────────────────────────── */
-app.get("/api/recommendations", async (_req, res) => {
-  const rows = await Recommendation.findAll({ order: [["ageDays", "ASC"]] });
-  res.json(rows);
-});
-
-app.get("/api/logs", async (req, res) => {
-  const { from, to } = req.query;
-  const where = {};
-  if (from) where.fedAt = { ...where.fedAt, [Op.gte]: new Date(from) };
-  if (to)   where.fedAt = { ...where.fedAt, [Op.lte]: new Date(to) };
-  const rows = await MilkLog.findAll({ where, order: [["fedAt", "ASC"]] });
-  res.json(rows);
-});
-
-app.post("/api/logs", async (req, res) => {
-  const { fedAt, amountMl, feedingType } = req.body;
-
-  if (!fedAt || !amountMl || !feedingType) {
-    return res.status(400).json({ error: "fedAt, amountMl & feedingType required" });
-  }
-  if (!Object.values(FeedingType).includes(feedingType)) {
-    return res.status(400).json({ error: "invalid feedingType" });
-  }
-
-  const row = await MilkLog.create({ fedAt, amountMl, feedingType });
-  res.json(row);
-});
+/* ─── API modules ──────────────────────────────────────────── */
+app.use(milkingRoutes);
 
 /* ─── runtime config endpoint ──────────────────────────────── */
 app.get("/env.js", (_req, res) => {
   res.type("application/javascript");
-
-  /** Normalise BIRTH_TS: keep ISO strings as-is, convert pure-digits to Number */
-  const normBirthTs = (v) =>
-    v && /^\d+$/.test(v) ? Number(v) : v || "";
-
+  const normBirthTs = (v) => (v && /^\d+$/.test(v) ? Number(v) : v || "");
   res.send(
     `window.__ENV__ = ${JSON.stringify({
       birthTs     : normBirthTs(process.env.BIRTH_TS),
@@ -68,12 +33,12 @@ app.get("/env.js", (_req, res) => {
   );
 });
 
-/* ─── serve front-end ───────────────────────────────────────── */
+/* ─── serve front-end static build ─────────────────────────── */
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 app.use(express.static(path.join(__dirname, "../public")));
 app.get("*", (_req, res) =>
   res.sendFile(path.join(__dirname, "../public/index.html"))
 );
 
-/* ─── start ─────────────────────────────────────────────────── */
-app.listen(port, () => console.log(`Web-baby listening on ${port}`));
+/* ─── start ────────────────────────────────────────────────── */
+app.listen(port, () => console.log(`Web-Baby listening on ${port}`));
