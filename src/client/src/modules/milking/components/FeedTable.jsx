@@ -1,6 +1,20 @@
 import React, { useState } from "react";
 import { format, formatISO } from "date-fns";
 
+/* emoji icons & friendly labels for quick scanning */
+const ICONS = {
+  BREAST_DIRECT : "🤱",
+  BREAST_BOTTLE : "🍼",
+  FORMULA_PUMP  : "🍼⚙️",
+  FORMULA_BOTTLE: "🍼",
+};
+const LABELS = {
+  BREAST_DIRECT : "Breast – direct",
+  BREAST_BOTTLE : "Breast – bottle",
+  FORMULA_PUMP  : "Formula – pump / tube",
+  FORMULA_BOTTLE: "Formula – bottle",
+};
+
 /**
  * Sortable, editable feed table.
  * When Edit is clicked an inline form appears *below* the row.
@@ -48,13 +62,11 @@ export default function FeedTable({ rows, onUpdate, onDelete }) {
       feedingType: type,
       fedAt,
     });
-    cancelEdit();
+    setEdit(null);
   }
 
-  function cancelEdit() { setEdit(null); }
-
-  async function handleDelete(id) {
-    if (confirm("Delete this feed entry?")) await onDelete(id);
+  async function del(id) {
+    if (onDelete && confirm("Delete this feed entry?")) await onDelete(id);
   }
 
   /* ── UI ────────────────────────────────────────────────────────── */
@@ -74,73 +86,71 @@ export default function FeedTable({ rows, onUpdate, onDelete }) {
           </thead>
 
           <tbody>
-            {sorted.map((f, idx) => (
+            {sorted.map(f => (
               <React.Fragment key={f.id}>
                 <tr>
                   <td>{format(new Date(f.fedAt), "HH:mm")}</td>
                   <td>{f.amountMl}</td>
-                  <td>{f.feedingType.replace("_", " ")}</td>
+                  <td>
+                    <span className="feed-icon">{ICONS[f.feedingType]}</span>
+                    {LABELS[f.feedingType]}
+                  </td>
                   {(onUpdate || onDelete) && (
-                    <td style={{ whiteSpace: "nowrap" }}>
+                    <td style={{ whiteSpace:"nowrap" }}>
                       {onUpdate && (
                         <button
-                          type="button"
                           className="btn-light"
                           onClick={() => beginEdit(f)}
-                          style={{ marginRight: ".4rem" }}
-                        >
-                          Edit
-                        </button>
+                          style={{ marginRight:".4rem" }}
+                        >Edit</button>
                       )}
                       {onDelete && (
                         <button
-                          type="button"
                           className="btn-light"
-                          onClick={() => handleDelete(f.id)}
-                        >
-                          ×
-                        </button>
+                          onClick={() => del(f.id)}
+                        >×</button>
                       )}
                     </td>
                   )}
                 </tr>
 
-                {/* inline edit row */}
+                {/* inline editor */}
                 {editingId === f.id && (
                   <tr>
                     <td colSpan={4}>
-                      <form onSubmit={saveEdit} style={{ display: "flex", gap: ".5rem", flexWrap:"wrap" }}>
+                      <form onSubmit={saveEdit} style={{ display:"flex", gap:".5rem", flexWrap:"wrap" }}>
                         <input
                           type="number"
                           value={formVals.amount}
-                          onChange={e => setForm({ ...formVals, amount: e.target.value })}
+                          onChange={e => setForm({ ...formVals, amount:e.target.value })}
                           min={0}
-                          style={{ width: 90 }}
                           required
+                          style={{ width:90 }}
                         />
                         <select
                           value={formVals.type}
-                          onChange={e => setForm({ ...formVals, type: e.target.value })}
+                          onChange={e => setForm({ ...formVals, type:e.target.value })}
                         >
-                          <option value="BREAST_DIRECT">Breast – direct</option>
-                          <option value="BREAST_BOTTLE">Breast – bottle</option>
-                          <option value="FORMULA_PUMP">Formula – pump / tube</option>
-                          <option value="FORMULA_BOTTLE">Formula – bottle</option>
+                          {Object.entries(LABELS).map(([val, label]) => (
+                            <option key={val} value={val}>
+                              {ICONS[val]} {label}
+                            </option>
+                          ))}
                         </select>
                         <input
                           type="date"
                           value={formVals.datePart}
-                          onChange={e => setForm({ ...formVals, datePart: e.target.value })}
+                          onChange={e => setForm({ ...formVals, datePart:e.target.value })}
                           required
                         />
                         <input
                           type="time"
                           value={formVals.timePart}
-                          onChange={e => setForm({ ...formVals, timePart: e.target.value })}
+                          onChange={e => setForm({ ...formVals, timePart:e.target.value })}
                           required
                         />
                         <button className="btn">Save</button>
-                        <button type="button" className="btn-light" onClick={cancelEdit}>
+                        <button type="button" className="btn-light" onClick={() => setEdit(null)}>
                           Cancel
                         </button>
                       </form>

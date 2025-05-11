@@ -15,7 +15,7 @@ header.mod-header {
 }
 header.mod-header h1 { margin: 0; font-size: 1.4rem; }
 
-/* top-bar nav as BUTTONS */
+/* top-bar nav as buttons */
 header.mod-header nav {
   display: flex;
   gap: .5rem;
@@ -54,7 +54,7 @@ main { padding: 1rem; }
   padding: 1rem 1.5rem;
   box-shadow: 0 1px 4px rgba(0,0,0,.08);
   margin-bottom: 1.5rem;
-  overflow: visible;
+  overflow: visible;               /* let chart legends/tooltips overflow */
 }
 
 /* buttons & form controls */
@@ -70,6 +70,13 @@ th, td               { padding: .5rem .6rem; text-align: left; font-size: .95rem
 tbody tr             { border-bottom: 1px solid #e5e9f0; }
 tbody tr:nth-child(odd)  { background: #f5f7fa; }
 tbody tr:nth-child(even) { background: #ffffff; }
+
+/* feed-type icons */
+.feed-icon {
+  font-size: 1.25rem;
+  margin-right: .25rem;
+  vertical-align: text-bottom;
+}
 
 /* ───────────────────────────────────────────────────────── mobile */
 @media (max-width: 600px) {
