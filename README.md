@@ -14,5 +14,9 @@ Everything ships in **one Docker image** so you can run it anywhere with
 | DB_USER           |          | `webbaby`                                                  |
 | DB_PASSWORD       |          | `hunter2`                                                  |
 | DB_PORT           |          | `3306`                                                     |
+| **BIRTH_TS**      |          | `2025-04-28T07:42:00Z` *(ISO)* or `1714288920000` *(ms)*   |
 
-*Provide either the full `DATABASE_URL` **or** the individual `DB_*` variables.*
+\* Provide either `DATABASE_URL` **or** the individual `DB_*` variables.
+
+`BIRTH_TS` is optional; if set, the UI shows the correct “age in days” and picks the
+matching entry from the *recommendations* table automatically.

@@ -1,9 +1,13 @@
 import React, { useEffect, useState } from "react";
-import { startOfToday, formatISO, format } from "date-fns";
+import { startOfToday, format, differenceInCalendarDays } from "date-fns";
 import { listRecommendations, listLogs, insertLog } from "./api";
 import MilkLogForm   from "./components/MilkLogForm.jsx";
 import MilkLogTable  from "./components/MilkLogTable.jsx";
 import SummaryChart  from "./components/SummaryChart.jsx";
+
+const birthTs = window.__ENV__?.birthTs
+  ? new Date(window.__ENV__.birthTs)
+  : null;
 
 export default function App() {
   const [recs, setRecs] = useState([]);
@@ -11,26 +15,38 @@ export default function App() {
   const [date, setDate] = useState(startOfToday());
   const [error, setError] = useState("");
 
-  /* ---- initial load ---- */
+  /* ---- load static recommendations once ---- */
   useEffect(() => {
-    listRecommendations().then(setRecs).catch(e => setError(e.message));
+    listRecommendations().then(setRecs).catch((e) => setError(e.message));
   }, []);
 
-  /* ---- logs for chosen date ---- */
-  async function refreshLogs(d = date) {
-    const day = formatISO(d, { representation: "date" });
-    listLogs(`?from=${day}&to=${day}T23:59:59`).then(setLogs).catch(e => setError(e.message));
-  }
-  useEffect(() => { refreshLogs(); }, [date]);
+  /* ---- load logs for chosen date ---- */
+  useEffect(() => {
+    async function refresh() {
+      const dayStr = format(date, "yyyy-MM-dd");
+      await listLogs(`?from=${dayStr}&to=${dayStr}T23:59:59Z`)
+        .then(setLogs)
+        .catch((e) => setError(e.message));
+    }
+    refresh();
+  }, [date]);
 
   /* ---- insert handler ---- */
   async function handleInsert(data) {
-    await insertLog(data);
-    await refreshLogs();
+    await insertLog(data).catch((e) => setError(e.message));
+    /* reload logs after successful insert */
+    const dayStr = format(date, "yyyy-MM-dd");
+    listLogs(`?from=${dayStr}&to=${dayStr}T23:59:59Z`).then(setLogs);
   }
 
-  const totRec = recs.find(r => r.ageDays === Math.floor((date - new Date(recs[0]?.createdAt || Date.now()))/864e5))?.totalMl;
-  const totAct = logs.reduce((s,l) => s + l.amountMl, 0);
+  /* ---- determine today’s recommendation ---- */
+  let recToday = null;
+  if (birthTs) {
+    const ageDays = differenceInCalendarDays(date, birthTs);
+    recToday = recs.find((r) => r.ageDays === ageDays);
+  }
+
+  const totalActual = logs.reduce((s, l) => s + l.amountMl, 0);
 
   return (
     <>
@@ -40,7 +56,11 @@ export default function App() {
       </header>
 
       <main>
-        {error && <p style={{color:"#c00"}}>{error}</p>}
+        {error && (
+          <p style={{ color: "#c00" }}>
+            {error}
+          </p>
+        )}
 
         <div className="card">
           <MilkLogForm onSave={handleInsert} defaultDate={date} />
@@ -51,7 +71,10 @@ export default function App() {
         </div>
 
         <div className="card">
-          <SummaryChart recommended={totRec} actual={totAct} />
+          <SummaryChart
+            recommended={recToday?.totalMl ?? 0}
+            actual={totalActual}
+          />
         </div>
       </main>
     </>

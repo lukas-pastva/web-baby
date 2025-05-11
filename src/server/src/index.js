@@ -51,6 +51,14 @@ app.post("/api/logs", async (req, res) => {
   res.json(row);
 });
 
+/* ─── tiny runtime-config endpoint (env.js) ────────────────────────── */
+app.get("/env.js", (_req, res) => {
+  res.type("application/javascript");
+  res.send(`window.__ENV__ = ${JSON.stringify({
+    birthTs: process.env.BIRTH_TS || "",
+  })};`);
+});
+
 /* ─── serve front-end ───────────────────────────────────────── */
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 app.use(express.static(path.join(__dirname, "../public")));
