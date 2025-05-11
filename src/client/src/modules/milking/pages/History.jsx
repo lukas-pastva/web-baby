@@ -1,4 +1,3 @@
-const path = () => window.location.pathname;
 import React, { useEffect, useState } from "react";
 import {
   startOfDay,
@@ -10,16 +9,17 @@ import api           from "../api.js";
 import DayCard       from "../components/DayCard.jsx";
 import AllDaysChart  from "../components/AllDaysChart.jsx";
 
-const DAYS_PER_PAGE = 50;
+const path           = () => window.location.pathname;
+const DAYS_PER_PAGE  = 50;
 
-/* runtime config --------------------------------------------------- */
-const rt            = window.__ENV__ || {};
-const birthTs       = rt.birthTs ? new Date(rt.birthTs) : null;
-const childName     = rt.childName   || "";
-const childSurname  = rt.childSurname|| "";
-const birthDay      = birthTs ? startOfDay(birthTs) : startOfDay(new Date());
-const today         = startOfDay(new Date());
+/* ─── runtime config ──────────────────────────────────────────────── */
+const rt           = window.__ENV__ || {};
+const birthTs      = rt.birthTs ? new Date(rt.birthTs) : null;
+const childName    = rt.childName   || "";
+const childSurname = rt.childSurname|| "";
 
+const birthDay = birthTs ? startOfDay(birthTs) : startOfDay(new Date());
+const today    = startOfDay(new Date());
 
 export default function MilkingHistory() {
   const [page, setPage]       = useState(0);
@@ -27,39 +27,35 @@ export default function MilkingHistory() {
   const [feedsByDay, setData] = useState({});
   const [err, setErr]         = useState("");
   const [loading, setLoading] = useState(false);
-  const [done, setDone]       = useState(false);   // reached today?
+  const [done, setDone]       = useState(false);   // reached today
 
-  /* recommendations once */
+  /* ---- recommendations once --------------------------------------- */
   useEffect(() => {
     api.listRecs().then(setRecs).catch(e => setErr(e.message));
   }, []);
 
-  /* load a page of days (birth → today, never beyond) */
+  /* ---- load sequential days (birth → today) ----------------------- */
   useEffect(() => {
     if (done) return;
 
     (async () => {
       setLoading(true);
-      const jobs = [];
+      const batch = [];
 
       for (let i = 0; i < DAYS_PER_PAGE; i++) {
         const offset = page * DAYS_PER_PAGE + i;
         const date   = addDays(birthDay, offset);
-
-        if (date > today) {
-          setDone(true);          // no more pages after this batch
-          break;
-        }
+        if (date > today) { setDone(true); break; }
 
         const day = format(date, "yyyy-MM-dd");
-        jobs.push(
+        batch.push(
           api.listFeeds(day)
              .then(rows => ({ day, date, rows }))
              .catch(()  => ({ day, date, rows: [] }))
         );
       }
 
-      const res = await Promise.all(jobs);
+      const res = await Promise.all(batch);
       setData(prev =>
         Object.fromEntries([
           ...Object.entries(prev),
@@ -70,15 +66,16 @@ export default function MilkingHistory() {
     })();
   }, [page, done]);
 
-  /* helper ----------------------------------------------------------- */
+  /* ---- helpers ---------------------------------------------------- */
   const recForAge = (age) =>
     recs.find(r => r.ageDays === age)?.totalMl ?? 0;
 
-  /* build arrays for stacked chart ---------------------------------- */
-  const ordered      = Object.values(feedsByDay).sort((a, b) => a.date - b.date);
-  const labels       = [];
-  const recommended  = [];
-  const actual       = [];
+  /* ---- build arrays (newest → oldest) ----------------------------- */
+  const ordered = Object.values(feedsByDay).sort((a, b) => b.date - a.date);
+
+  const labels      = [];
+  const recommended = [];
+  const actual      = [];
 
   ordered.forEach(({ date, rows }) => {
     labels.push(format(date, "d LLL"));
@@ -87,7 +84,7 @@ export default function MilkingHistory() {
     actual.push(rows.reduce((s, f) => s + f.amountMl, 0));
   });
 
-
+  /* ---- UI --------------------------------------------------------- */
   return (
     <>
       <header className="mod-header">
@@ -100,21 +97,15 @@ export default function MilkingHistory() {
         </nav>
 
         <div className="meta">
-          <strong>{childName} {childSurname}</strong><br />
-          {ageText && <small>{ageText}</small>}
+          <strong>{childName} {childSurname}</strong>
         </div>
       </header>
-
 
       {err && <p style={{ color: "#c00", padding: "0 1rem" }}>{err}</p>}
 
       <main>
         {labels.length > 0 && (
-          <AllDaysChart
-            labels={labels}
-            recommended={recommended}
-            actual={actual}
-          />
+          <AllDaysChart labels={labels} recommended={recommended} actual={actual} />
         )}
 
         {ordered.map(({ day, date, rows }) => (

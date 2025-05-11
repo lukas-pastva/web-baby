@@ -1,47 +1,85 @@
-import React from "react";
-import { Bar } from "react-chartjs-2";
+import React, { useEffect, useState } from "react";
 import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-} from "chart.js";
+  startOfToday,
+  format,
+  differenceInCalendarDays,
+} from "date-fns";
+import api          from "../api.js";
+import FeedForm     from "../components/FeedForm.jsx";
+import FeedTable    from "../components/FeedTable.jsx";
+import SummaryChart from "../components/SummaryChart.jsx";
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+/* ------------------------------------------------------------------ */
+/*  Runtime config & helpers                                          */
+/* ------------------------------------------------------------------ */
+const rt            = window.__ENV__ || {};
+const birthTs       = rt.birthTs ? new Date(rt.birthTs) : null;
+const childName     = rt.childName   || "";
+const childSurname  = rt.childSurname|| "";
 
-export default function AllDaysChart({ labels, recommended, actual }) {
-  const data = {
-    labels,
-    datasets: [
-      {
-        label           : "Recommended",
-        data            : recommended,
-        backgroundColor : "#d2d8e0",
-        stack           : "stack",
-      },
-      {
-        label           : "Actual",
-        data            : actual,
-        backgroundColor : "#18be94",
-        stack           : "stack",
-      },
-    ],
-  };
+const path = () => window.location.pathname;
 
-  const options = {
-    responsive          : true,
-    maintainAspectRatio : false,
-    scales              : { x: { stacked: true }, y: { stacked: true } },
-    plugins             : { legend: { position: "bottom" } },
-  };
+/* ------------------------------------------------------------------ */
+/*  Component                                                         */
+/* ------------------------------------------------------------------ */
+export default function MilkingDashboard() {
+  const [date, setDate]   = useState(startOfToday());
+  const [recs, setRecs]   = useState([]);
+  const [feeds, setFeeds] = useState([]);
+  const [err, setErr]     = useState("");
 
+  /* ---- recommendations once --------------------------------------- */
+  useEffect(() => {
+    api.listRecs().then(setRecs).catch(e => setErr(e.message));
+  }, []);
+
+  /* ---- feeds for selected date ------------------------------------ */
+  useEffect(() => {
+    const day = format(date, "yyyy-MM-dd");
+    api.listFeeds(day).then(setFeeds).catch(e => setErr(e.message));
+  }, [date]);
+
+  /* ---- insert handler --------------------------------------------- */
+  async function handleSave(feed) {
+    await api.insertFeed(feed).catch(e => setErr(e.message));
+    const day = format(date, "yyyy-MM-dd");
+    api.listFeeds(day).then(setFeeds);
+  }
+
+  /* ---- age & today’s recommendation ------------------------------- */
+  let recToday = null, ageText = "";
+  if (birthTs) {
+    const ageDays = differenceInCalendarDays(date, birthTs);
+    recToday      = recs.find(r => r.ageDays === ageDays);
+    ageText       = `${ageDays} days`;
+  }
+  const totalMl = feeds.reduce((s, f) => s + f.amountMl, 0);
+
+  /* ---- UI ---------------------------------------------------------- */
   return (
-    <div className="card" style={{ height: 360 }}>
-      <h3>Intake per day</h3>
-      <Bar data={data} options={options} />
-    </div>
+    <>
+      <header className="mod-header">
+        <h1>Web-Baby</h1>
+
+        <nav>
+          <a href="/milking"      className={path() === "/milking"      ? "active" : ""}>Today</a>
+          <a href="/milking/all"  className={path().startsWith("/milking/all") ? "active" : ""}>All days</a>
+          <a href="/help"         className={path() === "/help"         ? "active" : ""}>Help</a>
+        </nav>
+
+        <div className="meta">
+          <strong>{childName} {childSurname}</strong><br />
+          {ageText && <small>{ageText}</small>}
+        </div>
+      </header>
+
+      {err && <p style={{ color: "#c00", padding: "0 1rem" }}>{err}</p>}
+
+      <main>
+        <FeedForm  onSave={handleSave} defaultDate={date} />
+        <FeedTable rows={feeds} />
+        <SummaryChart recommended={recToday?.totalMl ?? 0} actual={totalMl} />
+      </main>
+    </>
   );
 }
