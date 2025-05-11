@@ -1,13 +1,16 @@
 import React, { useEffect, useState } from "react";
-import { startOfToday, format, differenceInCalendarDays } from "date-fns";
+import {
+  startOfToday,
+  format,
+  differenceInCalendarDays,
+  intervalToDuration,
+} from "date-fns";
 import { listRecommendations, listLogs, insertLog } from "./api";
-import MilkLogForm   from "./components/MilkLogForm.jsx";
-import MilkLogTable  from "./components/MilkLogTable.jsx";
-import SummaryChart  from "./components/SummaryChart.jsx";
+import MilkLogForm  from "./components/MilkLogForm.jsx";
+import MilkLogTable from "./components/MilkLogTable.jsx";
+import SummaryChart from "./components/SummaryChart.jsx";
 
-const birthTs = window.__ENV__?.birthTs
-  ? new Date(window.__ENV__.birthTs)
-  : null;
+const birthTs = window.__ENV__?.birthTs ? new Date(window.__ENV__.birthTs) : null;
 
 export default function App() {
   const [recs, setRecs] = useState([]);
@@ -15,35 +18,36 @@ export default function App() {
   const [date, setDate] = useState(startOfToday());
   const [error, setError] = useState("");
 
-  /* ---- load static recommendations once ---- */
+  /* ---- static recommendations ---- */
   useEffect(() => {
     listRecommendations().then(setRecs).catch((e) => setError(e.message));
   }, []);
 
-  /* ---- load logs for chosen date ---- */
+  /* ---- logs for selected date ---- */
   useEffect(() => {
-    async function refresh() {
-      const dayStr = format(date, "yyyy-MM-dd");
-      await listLogs(`?from=${dayStr}&to=${dayStr}T23:59:59Z`)
-        .then(setLogs)
-        .catch((e) => setError(e.message));
-    }
-    refresh();
+    const dayStr = format(date, "yyyy-MM-dd");
+    listLogs(`?from=${dayStr}&to=${dayStr}T23:59:59Z`)
+      .then(setLogs)
+      .catch((e) => setError(e.message));
   }, [date]);
 
   /* ---- insert handler ---- */
   async function handleInsert(data) {
     await insertLog(data).catch((e) => setError(e.message));
-    /* reload logs after successful insert */
     const dayStr = format(date, "yyyy-MM-dd");
     listLogs(`?from=${dayStr}&to=${dayStr}T23:59:59Z`).then(setLogs);
   }
 
-  /* ---- determine today’s recommendation ---- */
+  /* ---- today’s recommendation ---- */
   let recToday = null;
+  let ageInfo  = "";
   if (birthTs) {
     const ageDays = differenceInCalendarDays(date, birthTs);
-    recToday = recs.find((r) => r.ageDays === ageDays);
+    recToday      = recs.find((r) => r.ageDays === ageDays);
+
+    /* human-friendly Y-M-D breakdown */
+    const dur = intervalToDuration({ start: birthTs, end: date });
+    ageInfo   = `${ageDays} days (${dur.months} months, ${dur.years} years)`;
   }
 
   const totalActual = logs.reduce((s, l) => s + l.amountMl, 0);
@@ -52,15 +56,19 @@ export default function App() {
     <>
       <header>
         <h1>Web-Baby</h1>
-        <span>{format(date, "eeee, d LLL yyyy")}</span>
+        <div style={{ textAlign: "right" }}>
+          <span>{format(date, "eeee, d LLL yyyy")}</span>
+          {birthTs && (
+            <>
+              <br />
+              <small>{ageInfo}</small>
+            </>
+          )}
+        </div>
       </header>
 
       <main>
-        {error && (
-          <p style={{ color: "#c00" }}>
-            {error}
-          </p>
-        )}
+        {error && <p style={{ color: "#c00" }}>{error}</p>}
 
         <div className="card">
           <MilkLogForm onSave={handleInsert} defaultDate={date} />
