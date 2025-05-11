@@ -10,27 +10,29 @@ import {
   Legend,
 } from "chart.js";
 
-/* Register the chart.js pieces once */
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
-/**
- * Simple two-bar chart: recommended vs actual ml for the selected day.
- */
 export default function SummaryChart({ recommended = 0, actual = 0 }) {
   const data = {
-    labels: ["Recommended", "Actual"],
-    datasets: [
+    labels   : ["Recommended", "Actual"],
+    datasets : [
       {
-        label: "ml",
-        data: [recommended, actual],
+        label           : "Recommended",
+        data            : [recommended, 0],
+        backgroundColor : "#d2d8e0",   // light grey
+      },
+      {
+        label           : "Actual",
+        data            : [0, actual],
+        backgroundColor : "#18be94",   // teal
       },
     ],
   };
 
   const options = {
-    plugins: { legend: { display: false } },
-    responsive: true,
-    maintainAspectRatio: false,
+    responsive          : true,
+    maintainAspectRatio : false,
+    plugins             : { legend: { display: false } },
   };
 
   return (

@@ -1,3 +1,4 @@
+const path = () => window.location.pathname;
 import React, { useEffect, useState } from "react";
 import {
   startOfDay,
@@ -18,6 +19,7 @@ const childName     = rt.childName   || "";
 const childSurname  = rt.childSurname|| "";
 const birthDay      = birthTs ? startOfDay(birthTs) : startOfDay(new Date());
 const today         = startOfDay(new Date());
+
 
 export default function MilkingHistory() {
   const [page, setPage]       = useState(0);
@@ -85,21 +87,24 @@ export default function MilkingHistory() {
     actual.push(rows.reduce((s, f) => s + f.amountMl, 0));
   });
 
+
   return (
     <>
       <header className="mod-header">
         <h1>Web-Baby</h1>
 
         <nav>
-          <a href="/milking">Today</a>
-          <a href="/milking/all">All days</a>
-          <a href="/help">Help</a>
+          <a href="/milking"      className={path() === "/milking"      ? "active" : ""}>Today</a>
+          <a href="/milking/all"  className={path().startsWith("/milking/all") ? "active" : ""}>All days</a>
+          <a href="/help"         className={path() === "/help"         ? "active" : ""}>Help</a>
         </nav>
 
         <div className="meta">
-          <strong>{childName} {childSurname}</strong>
+          <strong>{childName} {childSurname}</strong><br />
+          {ageText && <small>{ageText}</small>}
         </div>
       </header>
+
 
       {err && <p style={{ color: "#c00", padding: "0 1rem" }}>{err}</p>}
 

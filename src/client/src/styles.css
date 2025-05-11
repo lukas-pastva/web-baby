@@ -16,15 +16,17 @@ header.mod-header nav a {
   text-decoration: none;
   margin-right: 1rem;
 }
-header.mod-header nav a:hover { text-decoration: underline; }
+header.mod-header nav a:hover       { text-decoration: underline; }
+header.mod-header nav a.active      { font-weight: 600; }
+header.mod-header nav a.active:hover{ text-decoration: none; }
 
-main { padding: 1rem; }               /* ← now full-width, no max-width */
+main { padding: 1rem; }     /* full-width */
 
 .card {
   background: #fff;
   border-radius: 8px;
   padding: 1rem 1.5rem;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  box-shadow: 0 1px 4px rgba(0,0,0,.08);
   margin-bottom: 1.5rem;
 }
 

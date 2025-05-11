@@ -12,10 +12,6 @@ import {
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
-/**
- * Stacked bar-chart: Recommended vs Actual ml per day.
- * Two clearly different colours.
- */
 export default function AllDaysChart({ labels, recommended, actual }) {
   const data = {
     labels,
@@ -23,13 +19,13 @@ export default function AllDaysChart({ labels, recommended, actual }) {
       {
         label           : "Recommended",
         data            : recommended,
-        backgroundColor : "#d2d8e0",   // light grey
+        backgroundColor : "#d2d8e0",
         stack           : "stack",
       },
       {
         label           : "Actual",
         data            : actual,
-        backgroundColor : "#18be94",   // teal
+        backgroundColor : "#18be94",
         stack           : "stack",
       },
     ],
@@ -38,8 +34,8 @@ export default function AllDaysChart({ labels, recommended, actual }) {
   const options = {
     responsive          : true,
     maintainAspectRatio : false,
-    plugins             : { legend: { position: "bottom" } },
     scales              : { x: { stacked: true }, y: { stacked: true } },
+    plugins             : { legend: { position: "bottom" } },
   };
 
   return (

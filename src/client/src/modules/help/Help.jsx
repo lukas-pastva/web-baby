@@ -1,6 +1,7 @@
 import React from "react";
 
-/* simple static help – re-uses the global header & full-width layout */
+const path = () => window.location.pathname;
+
 export default function HelpPage() {
   const rt = window.__ENV__ || {};
   const childName    = rt.childName   || "";
@@ -12,9 +13,9 @@ export default function HelpPage() {
         <h1>Web-Baby</h1>
 
         <nav>
-          <a href="/milking">Today</a>
-          <a href="/milking/all">All days</a>
-          <a href="/help">Help</a>
+          <a href="/milking"      className={path() === "/milking"      ? "active" : ""}>Today</a>
+          <a href="/milking/all"  className={path().startsWith("/milking/all") ? "active" : ""}>All days</a>
+          <a href="/help"         className={path() === "/help"         ? "active" : ""}>Help</a>
         </nav>
 
         <div className="meta">
