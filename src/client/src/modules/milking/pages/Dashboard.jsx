@@ -34,16 +34,26 @@ export default function MilkingDashboard() {
   }, []);
 
   /* ---- feeds for selected date ------------------------------------ */
-  useEffect(() => {
-    const day = format(date, "yyyy-MM-dd");
+  const reloadFeeds = async (d = date) => {
+    const day = format(d, "yyyy-MM-dd");
     api.listFeeds(day).then(setFeeds).catch(e => setErr(e.message));
-  }, [date]);
+  };
+  useEffect(() => { reloadFeeds(); }, [date]);
 
-  /* ---- insert handler --------------------------------------------- */
+  /* ---- CRUD handlers ---------------------------------------------- */
   async function handleSave(feed) {
     await api.insertFeed(feed).catch(e => setErr(e.message));
-    const day = format(date, "yyyy-MM-dd");
-    api.listFeeds(day).then(setFeeds);
+    reloadFeeds();
+  }
+
+  async function handleUpdate(id, payload) {
+    await api.updateFeed(id, payload).catch(e => setErr(e.message));
+    reloadFeeds();
+  }
+
+  async function handleDelete(id) {
+    await api.deleteFeed(id).catch(e => setErr(e.message));
+    reloadFeeds();
   }
 
   /* ---- age & today’s recommendation ------------------------------- */
@@ -77,7 +87,9 @@ export default function MilkingDashboard() {
 
       <main>
         <FeedForm  onSave={handleSave} defaultDate={date} />
-        <FeedTable rows={feeds} />
+        <FeedTable rows={feeds}
+                   onUpdate={handleUpdate}
+                   onDelete={handleDelete} />
         <SummaryChart recommended={recToday?.totalMl ?? 0} actual={totalMl} />
       </main>
     </>
