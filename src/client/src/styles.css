@@ -1,0 +1,33 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap");
+
+html { font-size: 95%; }
+body { margin: 0; font-family: "Inter", sans-serif; background: #f9fafb; }
+
+header {
+  background: #0f2733;
+  color: #fff;
+  padding: 0.75rem 1rem;
+  display: flex; justify-content: space-between; align-items: center;
+}
+header h1 { margin: 0; font-size: 1.3rem; }
+
+main { padding: 1rem; max-width: 820px; margin: 0 auto; }
+
+.card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 1rem 1.5rem;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  margin-bottom: 1.5rem;
+}
+
+button, input, select {
+  font-size: 1rem;
+}
+.btn     { background: #18be94; color: #fff; border: none; padding: .4rem .9rem; border-radius: 4px; cursor: pointer; }
+.btn:disabled { opacity: .6; cursor: not-allowed; }
+.btn-light { background: transparent; border: 1px solid #18be94; color: #18be94; padding: .35rem .8rem; border-radius: 4px; cursor: pointer; }
+
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: .4rem .6rem; text-align: left; font-size: .95rem; }
+tbody tr:nth-child(odd) { background: #fbfbfb; }
