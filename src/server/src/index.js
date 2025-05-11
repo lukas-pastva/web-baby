@@ -7,8 +7,11 @@ import dotenv   from "dotenv";
 import milkingRoutes from "./modules/milking/routes.js";
 import { syncAll }   from "./modules/milking/seed.js";
 
+import weightRoutes    from "./modules/weight/routes.js";
+import { syncWeight }  from "./modules/weight/seed.js";
+
 dotenv.config();
-await syncAll();                       // create tables + seed baseline
+await Promise.all([syncAll(), syncWeight()]);
 
 const app  = express();
 const port = process.env.PORT || 8080;
@@ -19,6 +22,7 @@ app.use(express.json());
 
 /* ─── API modules ──────────────────────────────────────────── */
 app.use(milkingRoutes);
+app.use(weightRoutes);
 
 /* ─── runtime config endpoint ──────────────────────────────── */
 app.get("/env.js", (_req, res) => {

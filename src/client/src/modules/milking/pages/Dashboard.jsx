@@ -74,6 +74,7 @@ export default function MilkingDashboard() {
         <nav>
           <a href="/milking"      className={path() === "/milking"      ? "active" : ""}>Today</a>
           <a href="/milking/all"  className={path().startsWith("/milking/all") ? "active" : ""}>All days</a>
+          <a href="/weight"       className={path() === "/weight"       ? "active" : ""}>Weight</a>
           <a href="/help"         className={path() === "/help"         ? "active" : ""}>Help</a>
         </nav>
 

@@ -8,6 +8,9 @@ const MilkingDashboard = lazy(() =>
 const MilkingHistory = lazy(() =>
   import("./modules/milking/pages/History.jsx")
 );
+const WeightDashboard = lazy(() =>
+  import("./modules/weight/pages/Dashboard.jsx")
+);
 const HelpPage = lazy(() =>
   import("./modules/help/Help.jsx")
 );
@@ -20,6 +23,7 @@ export default function AppRoutes() {
           <Route path="/"            element={<Navigate to="/milking" />} />
           <Route path="/milking"     element={<MilkingDashboard />} />
           <Route path="/milking/all" element={<MilkingHistory />} />
+          <Route path="/weight"      element={<WeightDashboard />} />
           <Route path="/help"        element={<HelpPage />} />
         </Routes>
       </Suspense>
