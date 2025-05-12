@@ -16,8 +16,8 @@ const LABELS = {
 };
 
 /**
- * Sortable, editable feed table.
- * When Edit is clicked an inline form appears *below* the row.
+ * Sortable, editable feed table **with a footer row that shows
+ * the day-total in millilitres.**
  */
 export default function FeedTable({ rows, onUpdate, onDelete }) {
   const [sortKey, setKey]     = useState("fedAt");
@@ -40,6 +40,9 @@ export default function FeedTable({ rows, onUpdate, onDelete }) {
     const d = a[sortKey] < b[sortKey] ? -1 : a[sortKey] > b[sortKey] ? 1 : 0;
     return asc ? d : -d;
   });
+
+  const totalMl = rows.reduce((s, r) => s + r.amountMl, 0);
+  const hasActions = onUpdate || onDelete;
 
   /* ── edit actions ─────────────────────────────────────────────── */
   function beginEdit(feed) {
@@ -74,6 +77,7 @@ export default function FeedTable({ rows, onUpdate, onDelete }) {
     <>
       <h3>Feeds for the day</h3>
       {sorted.length === 0 && <p>No entries.</p>}
+
       {sorted.length > 0 && (
         <table>
           <thead>
@@ -81,7 +85,7 @@ export default function FeedTable({ rows, onUpdate, onDelete }) {
               <th onClick={() => sort("fedAt")}>Time</th>
               <th onClick={() => sort("amountMl")}>Amount&nbsp;(ml)</th>
               <th>Type</th>
-              {(onUpdate || onDelete) && <th></th>}
+              {hasActions && <th></th>}
             </tr>
           </thead>
 
@@ -95,7 +99,7 @@ export default function FeedTable({ rows, onUpdate, onDelete }) {
                     <span className="feed-icon">{ICONS[f.feedingType]}</span>
                     {LABELS[f.feedingType]}
                   </td>
-                  {(onUpdate || onDelete) && (
+                  {hasActions && (
                     <td style={{ whiteSpace:"nowrap" }}>
                       {onUpdate && (
                         <button
@@ -117,8 +121,11 @@ export default function FeedTable({ rows, onUpdate, onDelete }) {
                 {/* inline editor */}
                 {editingId === f.id && (
                   <tr>
-                    <td colSpan={4}>
-                      <form onSubmit={saveEdit} style={{ display:"flex", gap:".5rem", flexWrap:"wrap" }}>
+                    <td colSpan={hasActions ? 4 : 3}>
+                      <form
+                        onSubmit={saveEdit}
+                        style={{ display:"flex", gap:".5rem", flexWrap:"wrap" }}
+                      >
                         <input
                           type="number"
                           value={formVals.amount}
@@ -150,7 +157,11 @@ export default function FeedTable({ rows, onUpdate, onDelete }) {
                           required
                         />
                         <button className="btn">Save</button>
-                        <button type="button" className="btn-light" onClick={() => setEdit(null)}>
+                        <button
+                          type="button"
+                          className="btn-light"
+                          onClick={() => setEdit(null)}
+                        >
                           Cancel
                         </button>
                       </form>
@@ -160,6 +171,15 @@ export default function FeedTable({ rows, onUpdate, onDelete }) {
               </React.Fragment>
             ))}
           </tbody>
+
+          {/* day-total row */}
+          <tfoot>
+            <tr style={{ background:"#f0f3f7", fontWeight:600 }}>
+              <td>Total</td>
+              <td>{totalMl}</td>
+              <td colSpan={hasActions ? 2 : 1}></td>
+            </tr>
+          </tfoot>
         </table>
       )}
     </>
