@@ -12,7 +12,6 @@ import {
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
-/* fixed palette used in AllDaysChart so the legend / colours match */
 const TYPE_COLORS = {
   BREAST_DIRECT : "#8dd3c7",
   BREAST_BOTTLE : "#80b1d3",
@@ -21,16 +20,16 @@ const TYPE_COLORS = {
 };
 
 /**
- * Two-column bar chart:
- *   • LEFT column – grey bar for the recommended total.
- *   • RIGHT column – coloured stack that splits today’s actual intake by type.
+ * Stacked bar (by type) + numeric total label.
  *
- * Props
- * ──────────────────────────────────────────────────────────
- * recommended : number        (ml recommended for today)
- * byType      : { [type]: ml } (actual split; keys as in FeedingType enum)
+ *  props
+ *  ────────────────────────────────────────────────
+ *  recommended : number
+ *  byType      : { [type]: ml }
  */
 export default function SummaryChart({ recommended = 0, byType = {} }) {
+  const total = Object.values(byType).reduce((s, v) => s + v, 0);
+
   const data = {
     labels  : ["Recommended", "Actual"],
     datasets: [
@@ -62,9 +61,13 @@ export default function SummaryChart({ recommended = 0, byType = {} }) {
   return (
     <>
       <h3>Total for the day</h3>
-      <div style={{ height: 260 }}>
+      <div style={{ height:260 }}>
         <Bar data={data} options={options} />
       </div>
+      {/* numeric total label */}
+      <p style={{ textAlign:"center", marginTop:8, fontWeight:600 }}>
+        {total}&nbsp;ml consumed today
+      </p>
     </>
   );
 }
