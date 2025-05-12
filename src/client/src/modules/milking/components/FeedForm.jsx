@@ -1,15 +1,28 @@
 import React, { useState } from "react";
 import { format, formatISO } from "date-fns";
+import { isTypeEnabled } from "../../../config.js";          // ← NEW
+
+const TYPES_IN_ORDER = [
+  "BREAST_DIRECT",
+  "BREAST_BOTTLE",
+  "FORMULA_PUMP",
+  "FORMULA_BOTTLE",
+];
 
 /**
- * Form to add a single feed with animated feedback.
- * • DATE & TIME always default to *now* in the user’s browser.
+ * Form to add a single feed.
+ * DATE & TIME always default to *now* in the user’s browser.
+ * Option list honours the session-config “enabled types”.
  */
 export default function FeedForm({ onSave }) {
   const now = new Date();
 
-  const [amount, setAmt] = useState("");
-  const [type,   setType] = useState("BREAST_DIRECT");
+  /* first enabled type becomes the default */
+  const enabledTypes      = TYPES_IN_ORDER.filter(isTypeEnabled);
+  const fallbackType      = enabledTypes[0] || "BREAST_DIRECT";
+
+  const [amount, setAmt]  = useState("");
+  const [type,   setType] = useState(fallbackType);
   const [date,   setDate] = useState(format(now, "yyyy-MM-dd"));
   const [time,   setTime] = useState(format(now, "HH:mm"));
 
@@ -56,10 +69,9 @@ export default function FeedForm({ onSave }) {
         />
 
         <select value={type} onChange={e => setType(e.target.value)}>
-          <option value="BREAST_DIRECT">🤱 Breast – direct</option>
-          <option value="BREAST_BOTTLE">🤱🍼 Breast – bottle</option>
-          <option value="FORMULA_PUMP">🍼⚙️ Formula – pump / tube</option>
-          <option value="FORMULA_BOTTLE">🍼 Formula – bottle</option>
+          {enabledTypes.map(t => (
+            <option key={t} value={t}>{t.replace(/_/g, " ")}</option>
+          ))}
         </select>
 
         <input type="date" value={date} onChange={e => setDate(e.target.value)} />

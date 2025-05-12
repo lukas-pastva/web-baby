@@ -54,6 +54,7 @@ export default function WeightDashboard() {
           <a href="/milking/all"  className={path().startsWith("/milking/all")?"active":""}>All days</a>
           <a href="/weight"       className={path() === "/weight"       ? "active":""}>Weight</a>
           <a href="/help"         className={path() === "/help"         ? "active":""}>Help</a>
+          <a href="/config"       className={path() === "/config"       ? "active" : ""}>Config</a>
         </nav>
         <div className="meta">
           <strong>{childName} {childSurname}</strong>
