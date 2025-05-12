@@ -23,40 +23,47 @@ const path = () => window.location.pathname;
 /*  Component                                                         */
 /* ------------------------------------------------------------------ */
 export default function MilkingDashboard() {
-  const [date, setDate]   = useState(startOfToday());
+  const [date, setDate]   = useState(startOfToday());   // “today”
   const [recs, setRecs]   = useState([]);
   const [feeds, setFeeds] = useState([]);
-  const [err, setErr]     = useState("");
+  const [err,  setErr]    = useState("");
 
-  /* ---- recommendations once --------------------------------------- */
+  /* ---- tick every minute – switch to the new day right after 00:00 */
+  useEffect(() => {
+    const id = setInterval(() => {
+      const today = startOfToday();
+      if (differenceInCalendarDays(today, date) !== 0) setDate(today);
+    }, 60_000);                                         // 60 s
+    return () => clearInterval(id);
+  }, [date]);
+
+  /* ---- recommendations once -------------------------------------- */
   useEffect(() => {
     api.listRecs().then(setRecs).catch(e => setErr(e.message));
   }, []);
 
-  /* ---- feeds for selected date ------------------------------------ */
+  /* ---- feeds for selected date ----------------------------------- */
   const reloadFeeds = async (d = date) => {
     const day = format(d, "yyyy-MM-dd");
     api.listFeeds(day).then(setFeeds).catch(e => setErr(e.message));
   };
   useEffect(() => { reloadFeeds(); }, [date]);
 
-  /* ---- CRUD handlers ---------------------------------------------- */
+  /* ---- CRUD handlers --------------------------------------------- */
   async function handleSave(feed) {
     await api.insertFeed(feed).catch(e => setErr(e.message));
     reloadFeeds();
   }
-
   async function handleUpdate(id, payload) {
     await api.updateFeed(id, payload).catch(e => setErr(e.message));
     reloadFeeds();
   }
-
   async function handleDelete(id) {
     await api.deleteFeed(id).catch(e => setErr(e.message));
     reloadFeeds();
   }
 
-  /* ---- age & today’s recommendation ------------------------------- */
+  /* ---- age & today’s recommendation ------------------------------ */
   let recToday = null, ageText = "";
   if (birthTs) {
     const ageDays = differenceInCalendarDays(date, birthTs);
@@ -65,7 +72,7 @@ export default function MilkingDashboard() {
   }
   const totalMl = feeds.reduce((s, f) => s + f.amountMl, 0);
 
-  /* ---- UI ---------------------------------------------------------- */
+  /* ---- UI --------------------------------------------------------- */
   return (
     <>
       <header className="mod-header">
@@ -87,7 +94,9 @@ export default function MilkingDashboard() {
       {err && <p style={{ color: "#c00", padding: "0 1rem" }}>{err}</p>}
 
       <main>
-        <FeedForm  onSave={handleSave} defaultDate={date} />
+        {/* FeedForm now uses its own “now” for default date */}
+        <FeedForm  onSave={handleSave} />
+
         <FeedTable rows={feeds}
                    onUpdate={handleUpdate}
                    onDelete={handleDelete} />

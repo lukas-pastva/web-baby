@@ -3,21 +3,18 @@ import { format, formatISO } from "date-fns";
 
 /**
  * Form to add a single feed with animated feedback.
- * • DATE defaults to the day passed in (Today page = today).
- * • TIME always defaults to the current browser time.
+ * • DATE & TIME always default to *now* in the user’s browser.
  */
-export default function FeedForm({ onSave, defaultDate }) {
-  /* pick today’s date part from defaultDate, but time from “now” */
-  const now              = new Date();
-  const initialDate      = defaultDate ? new Date(defaultDate) : now;
+export default function FeedForm({ onSave }) {
+  const now = new Date();
 
   const [amount, setAmt] = useState("");
-  const [type, setType]  = useState("BREAST_DIRECT");
-  const [date, setDate]  = useState(format(initialDate, "yyyy-MM-dd"));
-  const [time, setTime]  = useState(format(now, "HH:mm"));  // always now
+  const [type,   setType] = useState("BREAST_DIRECT");
+  const [date,   setDate] = useState(format(now, "yyyy-MM-dd"));
+  const [time,   setTime] = useState(format(now, "HH:mm"));
 
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved]   = useState(false);
+  const [saved,  setSaved]  = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -34,12 +31,13 @@ export default function FeedForm({ onSave, defaultDate }) {
 
     setSaving(false);
     setSaved(true);
-    /* fade-out success message after 2 s */
     setTimeout(() => setSaved(false), 2000);
 
     /* quick reset for next entry */
     setAmt("");
-    setTime(format(new Date(), "HH:mm"));
+    const n = new Date();
+    setDate(format(n, "yyyy-MM-dd"));
+    setTime(format(n, "HH:mm"));
   }
 
   return (
