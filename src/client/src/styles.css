@@ -1,3 +1,6 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap");
+
+/* ─────────────────────────── theme vars */
 :root {
   --accent        : #18be94;        /* boy  – teal  */
   --accent-contr  : #ffffff;
@@ -5,13 +8,10 @@
 }
 [data-theme="girl"] {
   --accent    : #e86dbf;            /* girl – pink  */
-  --header-bg : #4d2748;            /* deep plum for header/nav */
+  --header-bg : #4d2748;            /* plum header  */
 }
 
-
-/* ───────────────────────────────────────── base */
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap");
-
+/* ─────────────────────────── base */
 html  { font-size: 95%; }
 body  { margin: 0; font-family: "Inter", sans-serif; background: #f9fafb; }
 

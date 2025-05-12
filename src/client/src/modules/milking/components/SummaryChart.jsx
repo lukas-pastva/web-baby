@@ -9,9 +9,9 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
+import { accentColor } from "../../../theme.js";   // ← fixed
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
-import { accentColor } from "../../theme.js";   // ← NEW
 
 export default function SummaryChart({ recommended = 0, actual = 0 }) {
   const accent = accentColor();
@@ -19,14 +19,14 @@ export default function SummaryChart({ recommended = 0, actual = 0 }) {
     labels   : ["Recommended", "Actual"],
     datasets : [
       { label:"Recommended", data:[recommended,0], backgroundColor:"#d2d8e0" },
-      { label:"Actual",      data:[0,actual],     backgroundColor: accent   },
+      { label:"Actual",      data:[0,actual],      backgroundColor: accent   },
     ],
   };
 
   const options = {
-    responsive          : true,
-    maintainAspectRatio : false,
-    plugins             : { legend: { display: false } },
+    responsive:true,
+    maintainAspectRatio:false,
+    plugins:{ legend:{ display:false } },
   };
 
   return (

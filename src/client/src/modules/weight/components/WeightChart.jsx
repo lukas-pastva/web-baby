@@ -10,42 +10,35 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
+import { accentColor } from "../../../theme.js";   // ← fixed
 
 ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend
+  CategoryScale, LinearScale, PointElement,
+  LineElement,  Title, Tooltip, Legend
 );
-import { accentColor } from "../../theme.js";   // ← NEW
 
 export default function WeightChart({ labels = [], weights = [] }) {
   const accent = accentColor();
   const data = {
     labels,
-    datasets: [
-      {
-        label           : "Weight (g)",
-        data            : weights,
-        borderColor     : accent,
-        backgroundColor : "rgba(24,190,148,0.2)",   // fallback for old theme
-        tension         : 0.25,
-        pointRadius     : 4,
-        pointHoverRadius: 5,
-      },
-    ],
+    datasets: [{
+      label:"Weight (g)",
+      data:weights,
+      borderColor:accent,
+      backgroundColor:"rgba(24,190,148,0.2)",
+      tension:0.25,
+      pointRadius:4,
+      pointHoverRadius:5,
+    }],
   };
 
   const options = {
-    responsive          : true,
-    maintainAspectRatio : false,
-    plugins             : { legend: { display: false } },
-    scales              : {
-      x: { title: { display: true, text: "Date" } },
-      y: { title: { display: true, text: "Grams" } },
+    responsive:true,
+    maintainAspectRatio:false,
+    plugins:{ legend:{ display:false } },
+    scales:{
+      x:{ title:{ display:true, text:"Date" } },
+      y:{ title:{ display:true, text:"Grams" } },
     },
   };
 

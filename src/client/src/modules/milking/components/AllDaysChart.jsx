@@ -9,12 +9,12 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
-import { accentColor } from "../../theme.js";   // ← NEW
+import { accentColor } from "../../../theme.js";   // ← fixed path (three dots)
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 export default function AllDaysChart({ labels, recommended, actual }) {
-  const accent = accentColor();                // runtime colour
+  const accent = accentColor();
   const data = {
     labels,
     datasets: [
@@ -27,18 +27,12 @@ export default function AllDaysChart({ labels, recommended, actual }) {
     responsive          : true,
     maintainAspectRatio : false,
     plugins             : {
-      legend: {
-        display : true,
-        position: "top",
-      },
-      tooltip: { intersect: false },
+      legend : { display:true, position:"top" },
+      tooltip: { intersect:false },
     },
-    scales: {
-      x: { stacked: false },
-      y: { stacked: false, beginAtZero: true },
-    },
-  };  
-  
+    scales: { x:{ stacked:false }, y:{ stacked:false, beginAtZero:true } },
+  };
+
   return (
     <div className="card" style={{ height: 400 }}>
       <h3>Intake per day</h3>
