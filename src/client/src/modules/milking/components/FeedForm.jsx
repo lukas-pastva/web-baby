@@ -1,27 +1,31 @@
 import React, { useState } from "react";
 import { format, formatISO } from "date-fns";
-import { isTypeEnabled } from "../../../config.js";          // ← NEW
+import { isTypeEnabled } from "../../../config.js";      // session helper
 
-const TYPES_IN_ORDER = [
-  "BREAST_DIRECT",
-  "BREAST_BOTTLE",
-  "FORMULA_PUMP",
-  "FORMULA_BOTTLE",
-];
+/* ─── icons & labels (same set used elsewhere) ───────────────────── */
+const ICONS = {
+  BREAST_DIRECT : "🤱",
+  BREAST_BOTTLE : "🤱🍼",
+  FORMULA_PUMP  : "🍼⚙️",
+  FORMULA_BOTTLE: "🍼",
+};
+const LABELS = {
+  BREAST_DIRECT : "Breast – direct",
+  BREAST_BOTTLE : "Breast – bottle",
+  FORMULA_PUMP  : "Formula – pump / tube",
+  FORMULA_BOTTLE: "Formula – bottle",
+};
+const TYPES_IN_ORDER = Object.keys(ICONS);
 
-/**
- * Form to add a single feed.
- * DATE & TIME always default to *now* in the user’s browser.
- * Option list honours the session-config “enabled types”.
- */
+/* ------------------------------------------------------------------ */
+/*  Component                                                         */
+/* ------------------------------------------------------------------ */
 export default function FeedForm({ onSave }) {
-  const now = new Date();
+  const now           = new Date();
+  const enabledTypes  = TYPES_IN_ORDER.filter(isTypeEnabled);
+  const fallbackType  = enabledTypes[0] || "BREAST_DIRECT";
 
-  /* first enabled type becomes the default */
-  const enabledTypes      = TYPES_IN_ORDER.filter(isTypeEnabled);
-  const fallbackType      = enabledTypes[0] || "BREAST_DIRECT";
-
-  const [amount, setAmt]  = useState("");
+  const [amount, setAmt] = useState("");
   const [type,   setType] = useState(fallbackType);
   const [date,   setDate] = useState(format(now, "yyyy-MM-dd"));
   const [time,   setTime] = useState(format(now, "HH:mm"));
@@ -34,19 +38,16 @@ export default function FeedForm({ onSave }) {
     if (!amount) return;
 
     setSaving(true);
-
-    const fedAtIso = formatISO(new Date(`${date}T${time}`));
     await onSave({
-      fedAt      : fedAtIso,
+      fedAt      : formatISO(new Date(`${date}T${time}`)),
       amountMl   : Number(amount),
       feedingType: type,
     });
-
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
 
-    /* quick reset for next entry */
+    /* quick reset */
     setAmt("");
     const n = new Date();
     setDate(format(n, "yyyy-MM-dd"));
@@ -70,7 +71,9 @@ export default function FeedForm({ onSave }) {
 
         <select value={type} onChange={e => setType(e.target.value)}>
           {enabledTypes.map(t => (
-            <option key={t} value={t}>{t.replace(/_/g, " ")}</option>
+            <option key={t} value={t}>
+              {ICONS[t]} {LABELS[t]}
+            </option>
           ))}
         </select>
 

@@ -27,7 +27,7 @@ header.mod-header {
 }
 header.mod-header h1 { margin: 0; font-size: 1.4rem; }
 
-/* top-bar nav as buttons */
+/* top-bar nav */
 header.mod-header nav {
   display: flex;
   gap: .5rem;
@@ -66,7 +66,7 @@ main { padding: 1rem; }
   padding: 1rem 1.5rem;
   box-shadow: 0 1px 4px rgba(0,0,0,.08);
   margin-bottom: 1.5rem;
-  overflow: visible;               /* let chart legends/tooltips overflow */
+  overflow: visible;
 }
 
 /* buttons & inputs */
@@ -89,47 +89,38 @@ button, input, select { font-size: 1rem; }
   cursor: pointer;
 }
 
-/* ───────────────────────────────────────── tables */
-table                { width: 100%; border-collapse: collapse; }
-thead th             { border-bottom: 2px solid #d2d8e0; }
-th, td               { padding: .5rem .6rem; text-align: left; font-size: .95rem; }
-tbody tr             { border-bottom: 1px solid #e5e9f0; }
+/* tables */
+table { width: 100%; border-collapse: collapse; }
+thead th { border-bottom: 2px solid #d2d8e0; }
+th, td  { padding: .5rem .6rem; text-align: left; font-size: .95rem; }
+tbody tr { border-bottom: 1px solid #e5e9f0; }
 tbody tr:nth-child(odd)  { background: #f5f7fa; }
 tbody tr:nth-child(even) { background: #ffffff; }
 
-/* feed-type icons */
-.feed-icon {
-  font-size: 1.25rem;
-  margin-right: .25rem;
-  vertical-align: text-bottom;
-}
+/* feed icons */
+.feed-icon { font-size: 1.25rem; margin-right: .25rem; vertical-align: text-bottom; }
 
-/* ───────────────────────────────────────── mobile */
+/* mobile */
 @media (max-width: 600px) {
   html  { font-size: 92%; }
   header.mod-header h1 { font-size: 1.25rem; }
 }
 
-/* ───────────────────────────────────────── loader & alerts */
+/* loader & alerts */
 .spinner {
-  display: inline-block;
-  width: 16px;
-  height: 16px;
-  border: 2px solid #fff;
-  border-right-color: transparent;
-  border-radius: 50%;
-  animation: spin .6s linear infinite;
-  vertical-align: -3px;
+  display:inline-block;width:16px;height:16px;
+  border:2px solid #fff;border-right-color:transparent;
+  border-radius:50%;animation:spin .6s linear infinite;
+  vertical-align:-3px;
 }
 @keyframes spin { 100% { transform: rotate(360deg); } }
-
 .msg-success {
-  margin-left: .6rem;
-  color: var(--accent);
-  font-weight: 600;
-  animation: fadeout 2s forwards;
+  margin-left:.6rem;color:var(--accent);font-weight:600;
+  animation:fadeout 2s forwards;
 }
-@keyframes fadeout {
-  0%, 90% { opacity: 1; }
-  100%    { opacity: 0; }
-}
+@keyframes fadeout { 0%,90%{opacity:1;} 100%{opacity:0;} }
+
+/* ─────────────────────────── Config page tweaks */
+.config-wrap  { max-width: 500px; margin: 0 auto; }
+.config-types { list-style:none; padding-left:0; text-align:center; }
+.config-types li { display:inline-block; margin:0 .75rem .4rem; }
