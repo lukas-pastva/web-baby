@@ -9,15 +9,17 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
+import { accentColor } from "../../theme.js";   // ← NEW
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 export default function AllDaysChart({ labels, recommended, actual }) {
+  const accent = accentColor();                // runtime colour
   const data = {
     labels,
     datasets: [
       { label: "Recommended", data: recommended, backgroundColor: "#d2d8e0" },
-      { label: "Actual",      data: actual,      backgroundColor: "#18be94" },
+      { label: "Actual",      data: actual,      backgroundColor: accent },
     ],
   };
 
@@ -35,8 +37,8 @@ export default function AllDaysChart({ labels, recommended, actual }) {
       x: { stacked: false },
       y: { stacked: false, beginAtZero: true },
     },
-  };
-
+  };  
+  
   return (
     <div className="card" style={{ height: 400 }}>
       <h3>Intake per day</h3>

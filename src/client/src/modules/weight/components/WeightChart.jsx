@@ -20,19 +20,18 @@ ChartJS.register(
   Tooltip,
   Legend
 );
+import { accentColor } from "../../theme.js";   // ← NEW
 
-/**
- * Simple line chart (date on X, grams on Y).
- */
 export default function WeightChart({ labels = [], weights = [] }) {
+  const accent = accentColor();
   const data = {
     labels,
     datasets: [
       {
         label           : "Weight (g)",
         data            : weights,
-        borderColor     : "#18be94",
-        backgroundColor : "rgba(24,190,148,0.2)",
+        borderColor     : accent,
+        backgroundColor : "rgba(24,190,148,0.2)",   // fallback for old theme
         tension         : 0.25,
         pointRadius     : 4,
         pointHoverRadius: 5,

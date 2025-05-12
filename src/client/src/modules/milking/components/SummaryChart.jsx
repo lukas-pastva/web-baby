@@ -11,21 +11,15 @@ import {
 } from "chart.js";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+import { accentColor } from "../../theme.js";   // ← NEW
 
 export default function SummaryChart({ recommended = 0, actual = 0 }) {
+  const accent = accentColor();
   const data = {
     labels   : ["Recommended", "Actual"],
     datasets : [
-      {
-        label           : "Recommended",
-        data            : [recommended, 0],
-        backgroundColor : "#d2d8e0",   // light grey
-      },
-      {
-        label           : "Actual",
-        data            : [0, actual],
-        backgroundColor : "#18be94",   // teal
-      },
+      { label:"Recommended", data:[recommended,0], backgroundColor:"#d2d8e0" },
+      { label:"Actual",      data:[0,actual],     backgroundColor: accent   },
     ],
   };
 

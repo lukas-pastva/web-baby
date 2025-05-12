@@ -1,12 +1,13 @@
-/* ───────────────────────────────────────── theme vars */
 :root {
-  --accent        : #18be94;   /* boy  – teal */
+  --accent        : #18be94;        /* boy  – teal  */
   --accent-contr  : #ffffff;
-  --header-bg     : #0f2733;
+  --header-bg     : #0f2733;        /* navy */
 }
 [data-theme="girl"] {
-  --accent        : #e86dbf;   /* girl – pink */
+  --accent    : #e86dbf;            /* girl – pink  */
+  --header-bg : #4d2748;            /* deep plum for header/nav */
 }
+
 
 /* ───────────────────────────────────────── base */
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap");
