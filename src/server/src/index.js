@@ -4,11 +4,10 @@ import path     from "path";
 import { fileURLToPath } from "url";
 import dotenv   from "dotenv";
 
-import milkingRoutes from "./modules/milking/routes.js";
-import { syncAll }   from "./modules/milking/seed.js";
-
-import weightRoutes    from "./modules/weight/routes.js";
-import { syncWeight }  from "./modules/weight/seed.js";
+import milkingRoutes  from "./modules/milking/routes.js";
+import { syncAll }    from "./modules/milking/seed.js";
+import weightRoutes   from "./modules/weight/routes.js";
+import { syncWeight } from "./modules/weight/seed.js";
 
 dotenv.config();
 await Promise.all([syncAll(), syncWeight()]);
@@ -31,19 +30,19 @@ app.get("/env.js", (_req, res) => {
   res.send(
     `window.__ENV__ = ${JSON.stringify({
       birthTs     : normBirthTs(process.env.BIRTH_TS),
-      childName   : process.env.CHILD_NAME   || "",
-      childSurname: process.env.CHILD_SURNAME|| "",
-      appTitle    : process.env.APP_TITLE    || "Web-Baby",
+      childName   : process.env.CHILD_NAME    || "",
+      childSurname: process.env.CHILD_SURNAME || "",
+      appTitle    : process.env.APP_TITLE     || "Web-Baby",
+      theme       : (process.env.BABY_THEME   || "boy").toLowerCase(),
     })};`
   );
 });
 
-/* ─── serve front-end static build ─────────────────────────── */
+/* ─── serve front-end build ────────────────────────────────── */
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 app.use(express.static(path.join(__dirname, "../public")));
 app.get("*", (_req, res) =>
   res.sendFile(path.join(__dirname, "../public/index.html"))
 );
 
-/* ─── start ────────────────────────────────────────────────── */
 app.listen(port, () => console.log(`Web-Baby listening on ${port}`));

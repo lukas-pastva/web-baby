@@ -1,11 +1,22 @@
+/* ───────────────────────────────────────── theme vars */
+:root {
+  --accent        : #18be94;   /* boy  – teal */
+  --accent-contr  : #ffffff;
+  --header-bg     : #0f2733;
+}
+[data-theme="girl"] {
+  --accent        : #e86dbf;   /* girl – pink */
+}
+
+/* ───────────────────────────────────────── base */
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap");
 
 html  { font-size: 95%; }
 body  { margin: 0; font-family: "Inter", sans-serif; background: #f9fafb; }
 
-/* ───────────────────────────────────────────────────────────── header */
+/* ───────────────────────────────────────── header */
 header.mod-header {
-  background: #0f2733;
+  background: var(--header-bg);
   color: #fff;
   padding: 0.75rem 1rem;
   display: flex;
@@ -26,26 +37,26 @@ header.mod-header nav a {
   display: inline-block;
   padding: .45rem .9rem;
   border-radius: 4px;
-  border: 1px solid #18be94;
+  border: 1px solid var(--accent);
   background: transparent;
-  color: #18be94;
+  color: var(--accent);
   font-size: 1rem;
   text-decoration: none;
   line-height: 1;
   transition: background .15s, color .15s;
 }
 header.mod-header nav a:hover {
-  background: #18be94;
-  color: #fff;
+  background: var(--accent);
+  color: var(--accent-contr);
 }
 header.mod-header nav a.active,
 header.mod-header nav a.active:hover {
-  background: #18be94;
-  color: #fff;
+  background: var(--accent);
+  color: var(--accent-contr);
   font-weight: 600;
 }
 
-/* ───────────────────────────────────────────────────────────── layout */
+/* ───────────────────────────────────────── layout */
 main { padding: 1rem; }
 
 .card {
@@ -57,13 +68,27 @@ main { padding: 1rem; }
   overflow: visible;               /* let chart legends/tooltips overflow */
 }
 
-/* buttons & form controls */
+/* buttons & inputs */
 button, input, select { font-size: 1rem; }
-.btn        { background: #18be94; color: #fff; border: none; padding: .4rem .9rem; border-radius: 4px; cursor: pointer; }
+.btn {
+  background: var(--accent);
+  color: var(--accent-contr);
+  border: none;
+  padding: .4rem .9rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
 .btn:disabled { opacity: .6; cursor: not-allowed; }
-.btn-light  { background: transparent; border: 1px solid #18be94; color: #18be94; padding: .35rem .8rem; border-radius: 4px; cursor: pointer; }
+.btn-light {
+  background: transparent;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  padding: .35rem .8rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
 
-/* ───────────────────────────────────────────────────────────── tables */
+/* ───────────────────────────────────────── tables */
 table                { width: 100%; border-collapse: collapse; }
 thead th             { border-bottom: 2px solid #d2d8e0; }
 th, td               { padding: .5rem .6rem; text-align: left; font-size: .95rem; }
@@ -78,13 +103,13 @@ tbody tr:nth-child(even) { background: #ffffff; }
   vertical-align: text-bottom;
 }
 
-/* ───────────────────────────────────────────────────────── mobile */
+/* ───────────────────────────────────────── mobile */
 @media (max-width: 600px) {
   html  { font-size: 92%; }
   header.mod-header h1 { font-size: 1.25rem; }
 }
 
-/* ───────────────────────────────────────────────────────── loader & alerts */
+/* ───────────────────────────────────────── loader & alerts */
 .spinner {
   display: inline-block;
   width: 16px;
@@ -95,20 +120,15 @@ tbody tr:nth-child(even) { background: #ffffff; }
   animation: spin .6s linear infinite;
   vertical-align: -3px;
 }
-
-@keyframes spin {
-  100% { transform: rotate(360deg); }
-}
+@keyframes spin { 100% { transform: rotate(360deg); } }
 
 .msg-success {
   margin-left: .6rem;
-  color: #18be94;
+  color: var(--accent);
   font-weight: 600;
   animation: fadeout 2s forwards;
 }
-
 @keyframes fadeout {
-  0%   { opacity: 1; }
-  90%  { opacity: 1; }
-  100% { opacity: 0; }
+  0%, 90% { opacity: 1; }
+  100%    { opacity: 0; }
 }
