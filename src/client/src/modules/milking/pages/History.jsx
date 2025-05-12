@@ -1,30 +1,37 @@
 import React, { useEffect, useState } from "react";
 import {
-  startOfDay, addDays, format, differenceInCalendarDays,
+  startOfDay,
+  addDays,
+  format,
+  differenceInCalendarDays,
 } from "date-fns";
+
 import Header        from "../../../components/Header.jsx";
 import api           from "../api.js";
 import DayCard       from "../components/DayCard.jsx";
 import AllDaysChart  from "../components/AllDaysChart.jsx";
 
+const FEED_TYPES    = ["BREAST_DIRECT","BREAST_BOTTLE","FORMULA_PUMP","FORMULA_BOTTLE"];
 const DAYS_PER_PAGE = 50;
-const rt            = window.__ENV__ || {};
-const birthTs       = rt.birthTs ? new Date(rt.birthTs) : null;
+
+const rt       = window.__ENV__ || {};
+const birthTs  = rt.birthTs ? new Date(rt.birthTs) : null;
 
 const birthDay = birthTs ? startOfDay(birthTs) : startOfDay(new Date());
 const today    = startOfDay(new Date());
 
 export default function MilkingHistory() {
-  const [page, setPage]       = useState(0);
-  const [recs, setRecs]       = useState([]);
-  const [feedsByDay, setData] = useState({});
-  const [err, setErr]         = useState("");
-  const [loading, setLoading] = useState(false);
-  const [done, setDone]       = useState(false);
+  const [page,setPage]       = useState(0);
+  const [recs,setRecs]       = useState([]);
+  const [feedsByDay,setData] = useState({});
+  const [err,setErr]         = useState("");
+  const [loading,setLoading] = useState(false);
+  const [done,setDone]       = useState(false);
 
+  /* recommendations once */
   useEffect(() => { api.listRecs().then(setRecs).catch(e => setErr(e.message)); }, []);
 
-  /* paged fetch birth → today */
+  /* paged loader birth→today */
   useEffect(() => {
     if (done) return;
     (async () => {
@@ -34,62 +41,61 @@ export default function MilkingHistory() {
         const offset = page * DAYS_PER_PAGE + i;
         const date   = addDays(birthDay, offset);
         if (date > today) { setDone(true); break; }
-        const day = format(date, "yyyy-MM-dd");
+        const dayStr = format(date, "yyyy-MM-dd");
         batch.push(
-          api.listFeeds(day)
-             .then(rows => ({ day, date, rows }))
-             .catch(()  => ({ day, date, rows: [] }))
+          api.listFeeds(dayStr)
+             .then(rows => ({ dayStr, date, rows }))
+             .catch(()  => ({ dayStr, date, rows: [] }))
         );
       }
       const res = await Promise.all(batch);
       setData(prev => Object.fromEntries([
-        ...Object.entries(prev), ...res.map(r => [r.day, r]),
+        ...Object.entries(prev),
+        ...res.map(r => [r.dayStr, r]),
       ]));
       setLoading(false);
     })();
   }, [page, done]);
 
-  /* helper – ml recommendation for given age */
-  const recForAge = age => recs.find(r => r.ageDays === age)?.totalMl ?? 0;
+  /* build arrays for chart */
+  const ordered = Object.values(feedsByDay).sort((a,b) => b.date - a.date);
 
-  /* arrays (newest → oldest) */
-  const ordered = Object.values(feedsByDay).sort((a, b) => b.date - a.date);
-
-  const labels       = [];
-  const recommended  = [];
-  const byType       = { BREAST_DIRECT: [], BREAST_BOTTLE: [], FORMULA_PUMP: [], FORMULA_BOTTLE: [] };
+  const labels      = [];
+  const recommended = [];
+  const stacks      = Object.fromEntries(FEED_TYPES.map(t => [t, []]));
 
   ordered.forEach(({ date, rows }) => {
     labels.push(format(date, "d LLL"));
-    const ageDays = differenceInCalendarDays(date, birthDay);
-    recommended.push(recForAge(ageDays));
+    const age = differenceInCalendarDays(date, birthDay);
+    recommended.push(recs.find(r => r.ageDays === age)?.totalMl ?? 0);
 
-    const tmp = { BREAST_DIRECT:0, BREAST_BOTTLE:0, FORMULA_PUMP:0, FORMULA_BOTTLE:0 };
-    rows.forEach(r => { tmp[r.feedingType] += r.amountMl; });
-    Object.keys(byType).forEach(t => byType[t].push(tmp[t]));
+    const sums = Object.fromEntries(FEED_TYPES.map(t => [t, 0]));
+    rows.forEach(f => { sums[f.feedingType] += f.amountMl; });
+    FEED_TYPES.forEach(t => stacks[t].push(sums[t]));
   });
 
   return (
     <>
-      <Header showMeta={false} />
+      <Header />
+
       {err && <p style={{ color:"#c00", padding:"0 1rem" }}>{err}</p>}
 
       <main>
         {labels.length > 0 && (
-          <AllDaysChart
-            labels={labels}
-            recommended={recommended}
-            byType={byType}
-          />
+          <AllDaysChart labels={labels} stacks={stacks} recommended={recommended} />
         )}
 
-        {ordered.map(({ day, date, rows }) => (
+        {ordered.map(({ dayStr, date, rows }) => (
           <DayCard
-            key={day}
+            key={dayStr}
             date={date}
             feeds={rows}
-            onUpdate={(id, p) => api.updateFeed(id, p).then(() => api.listFeeds(day).then(r => setData(prev => ({ ...prev, [day]: { ...prev[day], rows:r } }))))}
-            onDelete={id     => api.deleteFeed(id)      .then(() => api.listFeeds(day).then(r => setData(prev => ({ ...prev, [day]: { ...prev[day], rows:r } }))))}
+            onUpdate={(id,p)=>api.updateFeed(id,p)
+                               .then(()=>setData(d=>({...d,[dayStr]:{...d[dayStr],rows:d[dayStr].rows.map(r=>r.id===id?{...r,...p}:r)}})))
+                               .catch(e=>setErr(e.message))}
+            onDelete={(id)=>api.deleteFeed(id)
+                               .then(()=>setData(d=>({...d,[dayStr]:{...d[dayStr],rows:d[dayStr].rows.filter(r=>r.id!==id)}})))
+                               .catch(e=>setErr(e.message))}
           />
         ))}
 
@@ -99,8 +105,8 @@ export default function MilkingHistory() {
           ) : done ? (
             <p><em>End of timeline</em></p>
           ) : (
-            <button className="btn-light" onClick={() => setPage(page + 1)}>
-              Next&nbsp;{DAYS_PER_PAGE}&nbsp;days →
+            <button className="btn-light" onClick={() => setPage(p => p + 1)}>
+              Next {DAYS_PER_PAGE} days →
             </button>
           )}
         </div>

@@ -24,72 +24,73 @@ ChartJS.register(
   Legend
 );
 
-/* colour + emoji per feed-type */
+/* ─────────────────────────── colour + icon map ──────────────────── */
 const TYPE_META = {
-  BREAST_DIRECT : { c: "#f4a261", icon: "🤱"   },
-  BREAST_BOTTLE : { c: "#2a9d8f", icon: "🤱🍼" },
-  FORMULA_PUMP  : { c: "#e76f51", icon: "🍼⚙️" },
-  FORMULA_BOTTLE: { c: "#264653", icon: "🍼"   },
+  BREAST_DIRECT : { c: "#f4a261", lbl: "🤱 Direct"      },
+  BREAST_BOTTLE : { c: "#2a9d8f", lbl: "🤱🍼 Bottle"     },
+  FORMULA_PUMP  : { c: "#e76f51", lbl: "🍼⚙ Tube"       },
+  FORMULA_BOTTLE: { c: "#264653", lbl: "🍼 Bottle"      },
 };
 
-export default function AllDaysChart({ labels = [], recommended = [], byType = {} }) {
-  /* ── datasets ────────────────────────────────────────────────── */
-  const datasets = [];
+export default function AllDaysChart({
+  labels          = [],
+  stacks          = {},          // { FEED_TYPE: [ …day values ] }
+  recommended     = [],          // grey dotted line
+}) {
+  const accent = accentColor();
 
-  /* guideline – thin grey line */
-  datasets.push({
-    type           : "line",
-    label          : "Recommended",
-    data           : recommended,
-    borderColor    : "#d2d8e0",
-    backgroundColor: "#d2d8e0",
-    tension        : 0.3,
-    pointRadius    : 0,
+  /* ── build bar datasets (one per feed-type) ─────────────────────── */
+  const datasets = Object.entries(TYPE_META).map(([code, meta]) => ({
+    type           : "bar",
+    label          : meta.lbl,
+    data           : stacks[code] || labels.map(() => 0),
+    backgroundColor: meta.c,
+    stack          : "feeds",
     yAxisID        : "y",
-  });
+  }));
 
-  /* stacked bars – one per feed-type */
-  Object.entries(byType).forEach(([type, arr]) => {
-    const { c, icon } = TYPE_META[type] || {};
-    datasets.push({
-      label          : `${icon} ${type.replace("_", " ")}`,
-      data           : arr,
-      backgroundColor: c || accentColor(),
-      stack          : "actual",          // all bars in a single stack
-      borderWidth    : 1,
-    });
-  });
-
-  /* total overlay line = Σ feed-types (NOT including recommended) */
+  /* ── totals (sum of bar stacks) – blue line on left axis ────────── */
   const totals = labels.map((_, i) =>
-    Object.values(byType).reduce((sum, arr) => sum + (arr[i] || 0), 0)
+    Object.keys(TYPE_META).reduce((s, k) => s + (stacks[k]?.[i] || 0), 0)
   );
   datasets.push({
-    type           : "line",
-    label          : "Total",
-    data           : totals,
-    borderColor    : accentColor(),
-    backgroundColor: accentColor(),
-    tension        : 0.25,
-    pointRadius    : 3,
-    yAxisID        : "y",
+    type        : "line",
+    label       : "Total",
+    data        : totals,
+    borderColor : accent,
+    backgroundColor: accent,
+    tension     : 0.25,
+    pointRadius : 3,
+    yAxisID     : "y",
   });
 
-  /* ── chart config ────────────────────────────────────────────── */
+  /* ── recommended – grey dashed line on *hidden* secondary axis ──── */
+  datasets.push({
+    type        : "line",
+    label       : "Recommended",
+    data        : recommended,
+    borderColor : "#9ca3af",
+    borderDash  : [4, 4],
+    pointRadius : 2,
+    tension     : 0.25,
+    yAxisID     : "rec",
+  });
+
   const data = { labels, datasets };
+
   const options = {
-    responsive         : true,
-    maintainAspectRatio: false,
-    interaction        : { mode: "index", intersect: false },
-    plugins            : { legend: { position: "top" } },
-    scales             : {
-      x: { stacked: true },
-      y: { stacked: true, beginAtZero: true },
+    responsive          : true,
+    maintainAspectRatio : false,
+    interaction         : { mode: "index", intersect: false },
+    plugins             : { legend: { position: "top" } },
+    scales              : {
+      y:   { stacked: true, beginAtZero: true },
+      rec: { display: false, beginAtZero: true },   // keeps grey line off the main scale
     },
   };
 
   return (
-    <div className="card" style={{ height: 400 }}>
+    <div className="card" style={{ height: 420 }}>
       <h3>Intake per day</h3>
       <Bar data={data} options={options} />
     </div>

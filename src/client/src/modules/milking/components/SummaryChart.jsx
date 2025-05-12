@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Bar } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -7,7 +7,6 @@ import {
   BarElement,
   PointElement,
   LineElement,
-  Title,
   Tooltip,
   Legend,
 } from "chart.js";
@@ -19,74 +18,78 @@ ChartJS.register(
   BarElement,
   PointElement,
   LineElement,
-  Title,
   Tooltip,
   Legend
 );
 
-/* colour + emoji per feed-type */
 const TYPE_META = {
-  BREAST_DIRECT : { c: "#f4a261", icon: "🤱"   },
-  BREAST_BOTTLE : { c: "#2a9d8f", icon: "🤱🍼" },
-  FORMULA_PUMP  : { c: "#e76f51", icon: "🍼⚙️" },
-  FORMULA_BOTTLE: { c: "#264653", icon: "🍼"   },
+  BREAST_DIRECT : { c: "#f4a261", lbl: "🤱 Direct"      },
+  BREAST_BOTTLE : { c: "#2a9d8f", lbl: "🤱🍼 Bottle"     },
+  FORMULA_PUMP  : { c: "#e76f51", lbl: "🍼⚙ Tube"       },
+  FORMULA_BOTTLE: { c: "#264653", lbl: "🍼 Bottle"      },
 };
 
-export default function SummaryChart({ recommended = 0, typeTotals = {} }) {
-  const datasets = [];
+export default function SummaryChart({ feeds = [], recommended = 0 }) {
+  /* sum per feed-type */
+  const sums = useMemo(() => {
+    const base = Object.fromEntries(Object.keys(TYPE_META).map(k => [k, 0]));
+    feeds.forEach(f => { base[f.feedingType] += f.amountMl; });
+    return base;
+  }, [feeds]);
 
-  /* guideline line (grey) */
-  datasets.push({
-    type           : "line",
-    label          : "Recommended",
-    data           : [recommended],
-    borderColor    : "#d2d8e0",
-    backgroundColor: "#d2d8e0",
-    tension        : 0.3,
-    pointRadius    : 0,
+  const accent = accentColor();
+  const labels = ["Today"];                     // single column
+
+  const barSets = Object.entries(TYPE_META).map(([code, meta]) => ({
+    type           : "bar",
+    label          : meta.lbl,
+    data           : [sums[code]],
+    backgroundColor: meta.c,
+    stack          : "feeds",
     yAxisID        : "y",
-  });
+  }));
 
-  /* stacked bars: one per feed-type */
-  Object.entries(typeTotals).forEach(([type, val]) => {
-    if (!val) return;                       // skip 0-value types
-    const { c, icon } = TYPE_META[type] || {};
-    datasets.push({
-      label          : `${icon} ${type.replace("_", " ")}`,
-      data           : [val],
-      backgroundColor: c || accentColor(),
-      stack          : "actual",
-      borderWidth    : 1,
-    });
-  });
+  const total = Object.values(sums).reduce((a, b) => a + b, 0);
 
-  /* total overlay line (accent) */
-  const total = Object.values(typeTotals).reduce((s, v) => s + v, 0);
-  datasets.push({
-    type           : "line",
-    label          : "Total",
-    data           : [total],
-    borderColor    : accentColor(),
-    backgroundColor: accentColor(),
-    tension        : 0.25,
-    pointRadius    : 4,
-    yAxisID        : "y",
-  });
+  const datasets = [
+    ...barSets,
+    {
+      type        : "line",
+      label       : "Total",
+      data        : [total],
+      borderColor : accent,
+      backgroundColor: accent,
+      tension     : 0.25,
+      yAxisID     : "y",
+    },
+    {
+      type        : "line",
+      label       : "Recommended",
+      data        : [recommended],
+      borderColor : "#9ca3af",
+      borderDash  : [4, 4],
+      pointRadius : 3,
+      tension     : 0.25,
+      yAxisID     : "rec",
+    },
+  ];
 
-  const data = { labels: ["Today"], datasets };
   const options = {
-    responsive         : true,
-    maintainAspectRatio: false,
-    interaction        : { mode: "index", intersect: false },
-    plugins            : { legend: { position: "top" } },
-    scales             : { y: { stacked: true, beginAtZero: true } },
+    responsive          : true,
+    maintainAspectRatio : false,
+    interaction         : { mode:"index", intersect:false },
+    plugins             : { legend:{ position:"top" } },
+    scales              : {
+      y  : { stacked:true, beginAtZero:true },
+      rec: { display:false, beginAtZero:true },
+    },
   };
 
   return (
     <>
       <h3>Total for the day</h3>
-      <div style={{ height: 260 }}>
-        <Bar data={data} options={options} />
+      <div style={{ height: 300 }}>
+        <Bar data={{ labels, datasets }} options={options} />
       </div>
     </>
   );
