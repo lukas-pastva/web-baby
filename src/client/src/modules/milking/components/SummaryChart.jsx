@@ -5,69 +5,91 @@ import {
   CategoryScale,
   LinearScale,
   BarElement,
+  PointElement,
+  LineElement,
   Title,
   Tooltip,
   Legend,
 } from "chart.js";
+import { accentColor } from "../../../theme.js";
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+);
 
-const TYPE_COLORS = {
-  BREAST_DIRECT : "#8dd3c7",
-  BREAST_BOTTLE : "#80b1d3",
-  FORMULA_PUMP  : "#fb8072",
-  FORMULA_BOTTLE: "#bebada",
+/* colour & icon palette per feed type */
+const TYPE_META = {
+  BREAST_DIRECT : { c: "#f4a261", icon: "🤱"   },
+  BREAST_BOTTLE : { c: "#2a9d8f", icon: "🤱🍼" },
+  FORMULA_PUMP  : { c: "#e76f51", icon: "🍼⚙️" },
+  FORMULA_BOTTLE: { c: "#264653", icon: "🍼"   },
 };
 
-/**
- * Stacked bar (by type) + numeric total label.
- *
- *  props
- *  ────────────────────────────────────────────────
- *  recommended : number
- *  byType      : { [type]: ml }
- */
-export default function SummaryChart({ recommended = 0, byType = {} }) {
-  const total = Object.values(byType).reduce((s, v) => s + v, 0);
-
-  const data = {
-    labels  : ["Recommended", "Actual"],
-    datasets: [
-      {
-        stack          : "rec",
-        label          : "Recommended",
-        data           : [recommended, 0],
-        backgroundColor: "#d2d8e0",
-      },
-      ...Object.entries(TYPE_COLORS).map(([type, color]) => ({
-        stack          : "act",
-        label          : type.replace(/_/g, " "),
-        data           : [0, byType[type] || 0],
-        backgroundColor: color,
-      })),
-    ],
-  };
-
-  const options = {
-    responsive          : true,
-    maintainAspectRatio : false,
-    plugins             : {
-      legend : { display:true, position:"top" },
-      tooltip: { intersect:false },
+export default function AllDaysChart({ labels = [], recommended = [], byType = {} }) {
+  /* ── build datasets ─────────────────────────────────────────── */
+  const datasets = [
+    /* guideline – line */
+    {
+      type          : "line",
+      label         : "Recommended",
+      data          : recommended,
+      borderColor   : "#d2d8e0",
+      backgroundColor: "#d2d8e0",
+      tension       : 0.3,
+      pointRadius   : 0,
+      yAxisID       : "y",
     },
-    scales: { x:{ stacked:true }, y:{ stacked:true, beginAtZero:true } },
+  ];
+
+  /* one stacked-bar dataset per feed type */
+  Object.entries(byType).forEach(([type, arr]) => {
+    const { c, icon } = TYPE_META[type] || {};
+    datasets.push({
+      label          : `${icon} ${type.replace("_", " ")}`,
+      data           : arr,
+      backgroundColor: c || accentColor(),
+      stack          : "actual",
+    });
+  });
+
+  /* total – overlay line */
+  const totals = labels.map((_, i) =>
+    Object.values(byType).reduce((s, arr) => s + (arr[i] || 0), 0),
+  );
+  datasets.push({
+    type          : "line",
+    label         : "Total",
+    data          : totals,
+    borderColor   : accentColor(),
+    backgroundColor: accentColor(),
+    tension       : 0.3,
+    pointRadius   : 3,
+    yAxisID       : "y",
+  });
+
+  /* ── chart options ──────────────────────────────────────────── */
+  const data = { labels, datasets };
+  const options = {
+    responsive         : true,
+    maintainAspectRatio: false,
+    plugins            : { legend: { position: "top" }, tooltip: { intersect: false } },
+    scales             : {
+      x: { stacked: true },
+      y: { stacked: true, beginAtZero: true },
+    },
   };
 
   return (
-    <>
-      <h3>Total for the day</h3>
-      <div style={{ height:260 }}>
-        <Bar data={data} options={options} />
-      </div>
-      {/* numeric total label */}
-      <p style={{ textAlign:"center", marginTop:8, fontWeight:600 }}>
-        {total}&nbsp;ml consumed today
-      </p>
-    </>
+    <div className="card" style={{ height: 400 }}>
+      <h3>Intake per day</h3>
+      <Bar data={data} options={options} />
+    </div>
   );
 }

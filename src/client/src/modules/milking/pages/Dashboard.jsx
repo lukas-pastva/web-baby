@@ -17,7 +17,7 @@ export default function MilkingDashboard() {
   const [feeds, setFeeds] = useState([]);
   const [err,  setErr]    = useState("");
 
-  /* tick every minute → switch days on midnight */
+  /* midnight rollover */
   useEffect(() => {
     const id = setInterval(() => {
       const today = startOfToday();
@@ -28,18 +28,18 @@ export default function MilkingDashboard() {
 
   useEffect(() => { api.listRecs().then(setRecs).catch(e => setErr(e.message)); }, []);
 
-  const reloadFeeds = (d = date) => {
-    const day = format(d, "yyyy-MM-dd");
+  const reloadFeeds = () => {
+    const day = format(date, "yyyy-MM-dd");
     api.listFeeds(day).then(setFeeds).catch(e => setErr(e.message));
   };
   useEffect(reloadFeeds, [date]);
 
   /* CRUD */
-  const handleSave   = f     => api.insertFeed(f)     .then(reloadFeeds).catch(e=>setErr(e.message));
-  const handleUpdate = (id,p)=> api.updateFeed(id,p) .then(reloadFeeds).catch(e=>setErr(e.message));
-  const handleDelete = id    => api.deleteFeed(id)   .then(reloadFeeds).catch(e=>setErr(e.message));
+  const handleSave   = f      => api.insertFeed(f)     .then(reloadFeeds).catch(e=>setErr(e.message));
+  const handleUpdate = (id,p) => api.updateFeed(id,p)  .then(reloadFeeds).catch(e=>setErr(e.message));
+  const handleDelete = id     => api.deleteFeed(id)    .then(reloadFeeds).catch(e=>setErr(e.message));
 
-  /* recommendation + age text */
+  /* recommendation + age */
   let ageText = "";
   let recToday = null;
   if (birthTs) {
@@ -47,19 +47,25 @@ export default function MilkingDashboard() {
     ageText  = `${ageDays} day${ageDays === 1 ? "" : "s"}`;
     recToday = recs.find(r => r.ageDays === ageDays);
   }
-  const totalMl = feeds.reduce((s, f) => s + f.amountMl, 0);
+
+  /* per-type totals for the summary chart */
+  const typeTotals = feeds.reduce((acc, f) => {
+    acc[f.feedingType] = (acc[f.feedingType] || 0) + f.amountMl;
+    return acc;
+  }, {});
 
   return (
     <>
-      {/* pass ageText to the header */}
       <Header extra={ageText} />
-
       {err && <p style={{ color:"#c00", padding:"0 1rem" }}>{err}</p>}
 
       <main>
         <FeedForm onSave={handleSave} />
         <FeedTable rows={feeds} onUpdate={handleUpdate} onDelete={handleDelete} />
-        <SummaryChart recommended={recToday?.totalMl ?? 0} actual={totalMl} />
+        <SummaryChart
+          recommended={recToday?.totalMl ?? 0}
+          typeTotals={typeTotals}
+        />
       </main>
     </>
   );

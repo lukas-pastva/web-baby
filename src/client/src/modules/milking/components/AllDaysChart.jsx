@@ -5,59 +5,84 @@ import {
   CategoryScale,
   LinearScale,
   BarElement,
+  PointElement,
+  LineElement,
   Title,
   Tooltip,
   Legend,
 } from "chart.js";
-import { accentColor } from "../../../theme.js";   // ← path from /components
+import { accentColor } from "../../../theme.js";
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+);
 
-/* ─── colour for every feeding type ─────────────────────────────── */
-const TYPE_COLORS = {
-  BREAST_DIRECT : "#8dd3c7",
-  BREAST_BOTTLE : "#80b1d3",
-  FORMULA_PUMP  : "#fb8072",
-  FORMULA_BOTTLE: "#bebada",
+/* colour & icon palette per feed type */
+const TYPE_META = {
+  BREAST_DIRECT : { c: "#f4a261", icon: "🤱"   },
+  BREAST_BOTTLE : { c: "#2a9d8f", icon: "🤱🍼" },
+  FORMULA_PUMP  : { c: "#e76f51", icon: "🍼⚙️" },
+  FORMULA_BOTTLE: { c: "#264653", icon: "🍼"   },
 };
 
-/**
- * Stacked intake chart: one grey “Recommended” bar + a coloured stack
- * that splits the actual intake into its four feeding-type segments.
- */
 export default function AllDaysChart({ labels = [], recommended = [], byType = {} }) {
-  const accent = accentColor();            // still available for other uses
-
-  const data = {
-    labels,
-    datasets: [
-      /* separate bar so users can eyeball total vs. recommendation */
-      {
-        stack          : "rec",
-        label          : "Recommended",
-        data           : recommended,
-        backgroundColor: "#d2d8e0",
-      },
-      /* 4 coloured segments build one “actual” stack */
-      ...Object.entries(TYPE_COLORS).map(([type, color]) => ({
-        stack          : "act",
-        label          : type.replace(/_/g, " "),
-        data           : byType[type] || [],
-        backgroundColor: color,
-      })),
-    ],
-  };
-
-  const options = {
-    responsive          : true,
-    maintainAspectRatio : false,
-    plugins             : {
-      legend : { position:"top" },
-      tooltip: { intersect:false },
+  /* ── build datasets ─────────────────────────────────────────── */
+  const datasets = [
+    /* guideline – line */
+    {
+      type          : "line",
+      label         : "Recommended",
+      data          : recommended,
+      borderColor   : "#d2d8e0",
+      backgroundColor: "#d2d8e0",
+      tension       : 0.3,
+      pointRadius   : 0,
+      yAxisID       : "y",
     },
-    scales: {
-      x: { stacked:true },
-      y: { stacked:true, beginAtZero:true },
+  ];
+
+  /* one stacked-bar dataset per feed type */
+  Object.entries(byType).forEach(([type, arr]) => {
+    const { c, icon } = TYPE_META[type] || {};
+    datasets.push({
+      label          : `${icon} ${type.replace("_", " ")}`,
+      data           : arr,
+      backgroundColor: c || accentColor(),
+      stack          : "actual",
+    });
+  });
+
+  /* total – overlay line */
+  const totals = labels.map((_, i) =>
+    Object.values(byType).reduce((s, arr) => s + (arr[i] || 0), 0),
+  );
+  datasets.push({
+    type          : "line",
+    label         : "Total",
+    data          : totals,
+    borderColor   : accentColor(),
+    backgroundColor: accentColor(),
+    tension       : 0.3,
+    pointRadius   : 3,
+    yAxisID       : "y",
+  });
+
+  /* ── chart options ──────────────────────────────────────────── */
+  const data = { labels, datasets };
+  const options = {
+    responsive         : true,
+    maintainAspectRatio: false,
+    plugins            : { legend: { position: "top" }, tooltip: { intersect: false } },
+    scales             : {
+      x: { stacked: true },
+      y: { stacked: true, beginAtZero: true },
     },
   };
 
