@@ -9,24 +9,54 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
-import { accentColor } from "../../../theme.js";   // ← fixed
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
-export default function SummaryChart({ recommended = 0, actual = 0 }) {
-  const accent = accentColor();
+/* fixed palette used in AllDaysChart so the legend / colours match */
+const TYPE_COLORS = {
+  BREAST_DIRECT : "#8dd3c7",
+  BREAST_BOTTLE : "#80b1d3",
+  FORMULA_PUMP  : "#fb8072",
+  FORMULA_BOTTLE: "#bebada",
+};
+
+/**
+ * Two-column bar chart:
+ *   • LEFT column – grey bar for the recommended total.
+ *   • RIGHT column – coloured stack that splits today’s actual intake by type.
+ *
+ * Props
+ * ──────────────────────────────────────────────────────────
+ * recommended : number        (ml recommended for today)
+ * byType      : { [type]: ml } (actual split; keys as in FeedingType enum)
+ */
+export default function SummaryChart({ recommended = 0, byType = {} }) {
   const data = {
-    labels   : ["Recommended", "Actual"],
-    datasets : [
-      { label:"Recommended", data:[recommended,0], backgroundColor:"#d2d8e0" },
-      { label:"Actual",      data:[0,actual],      backgroundColor: accent   },
+    labels  : ["Recommended", "Actual"],
+    datasets: [
+      {
+        stack          : "rec",
+        label          : "Recommended",
+        data           : [recommended, 0],
+        backgroundColor: "#d2d8e0",
+      },
+      ...Object.entries(TYPE_COLORS).map(([type, color]) => ({
+        stack          : "act",
+        label          : type.replace(/_/g, " "),
+        data           : [0, byType[type] || 0],
+        backgroundColor: color,
+      })),
     ],
   };
 
   const options = {
-    responsive:true,
-    maintainAspectRatio:false,
-    plugins:{ legend:{ display:false } },
+    responsive          : true,
+    maintainAspectRatio : false,
+    plugins             : {
+      legend : { display:true, position:"top" },
+      tooltip: { intersect:false },
+    },
+    scales: { x:{ stacked:true }, y:{ stacked:true, beginAtZero:true } },
   };
 
   return (
