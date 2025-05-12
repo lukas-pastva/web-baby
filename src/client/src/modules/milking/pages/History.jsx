@@ -9,10 +9,10 @@ import api           from "../api.js";
 import DayCard       from "../components/DayCard.jsx";
 import AllDaysChart  from "../components/AllDaysChart.jsx";
 
-const path           = () => window.location.pathname;
-const DAYS_PER_PAGE  = 50;
+const path          = () => window.location.pathname;
+const DAYS_PER_PAGE = 50;
 
-/* ─── runtime config ──────────────────────────────────────────────── */
+/* ─── runtime config ─────────────────────────────────────────────── */
 const rt           = window.__ENV__ || {};
 const birthTs      = rt.birthTs ? new Date(rt.birthTs) : null;
 const childName    = rt.childName   || "";
@@ -27,14 +27,14 @@ export default function MilkingHistory() {
   const [feedsByDay, setData] = useState({});
   const [err, setErr]         = useState("");
   const [loading, setLoading] = useState(false);
-  const [done, setDone]       = useState(false);   // reached today
+  const [done, setDone]       = useState(false);          // reached today
 
-  /* ---- recommendations once --------------------------------------- */
+  /* ---- recommendations once ------------------------------------- */
   useEffect(() => {
     api.listRecs().then(setRecs).catch(e => setErr(e.message));
   }, []);
 
-  /* ---- load sequential days (birth → today) ----------------------- */
+  /* ---- load sequential days (birth → today) --------------------- */
   useEffect(() => {
     if (done) return;
 
@@ -66,11 +66,11 @@ export default function MilkingHistory() {
     })();
   }, [page, done]);
 
-  /* ---- helpers ---------------------------------------------------- */
+  /* ---- helpers --------------------------------------------------- */
   const recForAge = (age) =>
     recs.find(r => r.ageDays === age)?.totalMl ?? 0;
 
-  /* ---- refresh single day after edit/delete ----------------------- */
+  /* ---- refresh single day after edit/delete ---------------------- */
   const refreshDay = async (day) => {
     try {
       const rows = await api.listFeeds(day);
@@ -88,21 +88,42 @@ export default function MilkingHistory() {
     refreshDay(day);
   }
 
-  /* ---- build arrays (newest → oldest) ----------------------------- */
+  /* ---- build arrays (newest → oldest) ---------------------------- */
   const ordered = Object.values(feedsByDay).sort((a, b) => b.date - a.date);
 
   const labels      = [];
   const recommended = [];
   const actual      = [];
 
+  const byType = {
+    BREAST_DIRECT : [],
+    BREAST_BOTTLE : [],
+    FORMULA_PUMP  : [],
+    FORMULA_BOTTLE: [],
+  };
+
   ordered.forEach(({ date, rows }) => {
     labels.push(format(date, "d LLL"));
+
     const ageDays = differenceInCalendarDays(date, birthDay);
     recommended.push(recForAge(ageDays));
-    actual.push(rows.reduce((s, f) => s + f.amountMl, 0));
+
+    /* total actual */
+    const total = rows.reduce((s, f) => s + f.amountMl, 0);
+    actual.push(total);
+
+    /* per-type split */
+    const sums = {
+      BREAST_DIRECT : 0,
+      BREAST_BOTTLE : 0,
+      FORMULA_PUMP  : 0,
+      FORMULA_BOTTLE: 0,
+    };
+    rows.forEach(r => { sums[r.feedingType] += r.amountMl; });
+    Object.keys(byType).forEach(t => byType[t].push(sums[t]));
   });
 
-  /* ---- UI --------------------------------------------------------- */
+  /* ---- UI -------------------------------------------------------- */
   return (
     <>
       <header className="mod-header">
@@ -120,11 +141,16 @@ export default function MilkingHistory() {
         </div>
       </header>
 
-      {err && <p style={{ color: "#c00", padding: "0 1rem" }}>{err}</p>}
+      {err && <p style={{ color:"#c00", padding:"0 1rem" }}>{err}</p>}
 
       <main>
         {labels.length > 0 && (
-          <AllDaysChart labels={labels} recommended={recommended} actual={actual} />
+          <AllDaysChart
+            labels={labels}
+            recommended={recommended}
+            actual={actual}
+            byType={byType}
+          />
         )}
 
         {ordered.map(({ day, date, rows }) => (
@@ -137,7 +163,7 @@ export default function MilkingHistory() {
           />
         ))}
 
-        <div style={{ textAlign: "center", margin: "1.5rem 0" }}>
+        <div style={{ textAlign:"center", margin:"1.5rem 0" }}>
           {loading ? (
             <p>Loading…</p>
           ) : done ? (
