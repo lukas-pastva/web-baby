@@ -9,18 +9,44 @@ async function json(promise) {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Helpers ---------------------------------------------------------- */
+/* ------------------------------------------------------------------ */
+function tzOffsetString(date = new Date()) {
+  const offsetMin = -date.getTimezoneOffset();          // west = –, east = +
+  const sign      = offsetMin >= 0 ? "+" : "-";
+  const abs       = Math.abs(offsetMin);
+  const hh        = String(Math.floor(abs / 60)).padStart(2, "0");
+  const mm        = String(abs % 60).padStart(2, "0");
+  return `${sign}${hh}:${mm}`;                           // e.g. “+02:00”
+}
+
+/* ------------------------------------------------------------------ */
 /*  API surface ------------------------------------------------------ */
 /* ------------------------------------------------------------------ */
 export default {
   /* recommendations */
-  listRecs ()                { return json(fetch("/api/milking/recommendations")); },
-
-  /* feeds ----------------------------------------------------------- */
-  listFeeds(day)             {
-    return json(fetch(`/api/milking/feeds?from=${day}&to=${day}T23:59:59Z`));
+  listRecs () {
+    return json(fetch("/api/milking/recommendations"));
   },
 
-  insertFeed(payload)        {
+  /* feeds ----------------------------------------------------------- */
+  /**
+   * Return all feeds that fall within the *local* calendar day.
+   * We send an explicit timezone-aware range instead of naïve UTC
+   * midnight → 23:59 so entries around midnight never bleed over.
+   */
+  listFeeds(day) {
+    const tz      = tzOffsetString();
+    const fromIso = `${day}T00:00:00${tz}`;
+    const toIso   = `${day}T23:59:59${tz}`;
+    return json(
+      fetch(
+        `/api/milking/feeds?from=${encodeURIComponent(fromIso)}&to=${encodeURIComponent(toIso)}`
+      )
+    );
+  },
+
+  insertFeed(payload) {
     return json(fetch("/api/milking/feeds", {
       method : "POST",
       headers: { "Content-Type": "application/json" },
@@ -28,7 +54,7 @@ export default {
     }));
   },
 
-  updateFeed(id, payload)    {
+  updateFeed(id, payload) {
     return json(fetch(`/api/milking/feeds/${id}`, {
       method : "PUT",
       headers: { "Content-Type": "application/json" },
@@ -36,7 +62,7 @@ export default {
     }));
   },
 
-  deleteFeed(id)             {
+  deleteFeed(id) {
     return json(fetch(`/api/milking/feeds/${id}`, { method: "DELETE" }));
   },
 };

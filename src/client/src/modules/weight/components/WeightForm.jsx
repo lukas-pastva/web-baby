@@ -2,20 +2,29 @@ import React, { useState } from "react";
 import { formatISO, format } from "date-fns";
 
 /**
- * One-line form to record baby's weight (grams) once a day.
+ * One-line form to record baby's weight with animated feedback.
  */
 export default function WeightForm({ onSave, defaultDate = new Date() }) {
-  const [grams, setGrams] = useState("");
-  const [date, setDate]   = useState(format(defaultDate, "yyyy-MM-dd"));
+  const [grams, setGrams]   = useState("");
+  const [date, setDate]     = useState(format(defaultDate, "yyyy-MM-dd"));
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved]   = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
     if (!grams) return;
 
+    setSaving(true);
+
     await onSave({
       measuredAt : formatISO(new Date(date), { representation: "date" }),
       weightGrams: Number(grams),
     });
+
+    setSaving(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+
     setGrams("");
   }
 
@@ -38,7 +47,10 @@ export default function WeightForm({ onSave, defaultDate = new Date() }) {
           onChange={e => setDate(e.target.value)}
           required
         />
-        <button className="btn">Save</button>
+        <button className="btn" disabled={saving}>
+          {saving ? <span className="spinner"></span> : "Save"}
+        </button>
+        {saved && <span className="msg-success" role="status">✓ Saved</span>}
       </div>
     </form>
   );

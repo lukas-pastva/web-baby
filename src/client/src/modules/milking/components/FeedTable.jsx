@@ -4,7 +4,7 @@ import { format, formatISO } from "date-fns";
 /* emoji icons & friendly labels for quick scanning */
 const ICONS = {
   BREAST_DIRECT : "🤱",
-  BREAST_BOTTLE : "🍼",
+  BREAST_BOTTLE : "🤱🍼",
   FORMULA_PUMP  : "🍼⚙️",
   FORMULA_BOTTLE: "🍼",
 };

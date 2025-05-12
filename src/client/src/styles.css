@@ -83,3 +83,32 @@ tbody tr:nth-child(even) { background: #ffffff; }
   html  { font-size: 92%; }
   header.mod-header h1 { font-size: 1.25rem; }
 }
+
+/* ───────────────────────────────────────────────────────── loader & alerts */
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #fff;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin .6s linear infinite;
+  vertical-align: -3px;
+}
+
+@keyframes spin {
+  100% { transform: rotate(360deg); }
+}
+
+.msg-success {
+  margin-left: .6rem;
+  color: #18be94;
+  font-weight: 600;
+  animation: fadeout 2s forwards;
+}
+
+@keyframes fadeout {
+  0%   { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { opacity: 0; }
+}
