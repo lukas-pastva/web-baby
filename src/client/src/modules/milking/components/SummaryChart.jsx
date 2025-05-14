@@ -33,7 +33,7 @@ const TYPE_META = {
 
 export default function SummaryChart({ feeds = [], recommended = 0 }) {
   /* ----------------------------------------------------------------
-   *  Prepare *per-feed* stacks plus a running cumulative total
+   * Build per-feed stacks and running cumulative total
    * ---------------------------------------------------------------- */
   const { labels, stacks, cumulative } = useMemo(() => {
     const lbls   = [];
@@ -42,15 +42,17 @@ export default function SummaryChart({ feeds = [], recommended = 0 }) {
 
     let running = 0;
     [...feeds]
-      .sort((a, b) => new Date(a.fedAt) - new Date(b.fedAt))       // chronological
+      .sort((a, b) => new Date(a.fedAt) - new Date(b.fedAt))   // chronological
       .forEach(({ fedAt, feedingType, amountMl }) => {
         lbls.push(format(new Date(fedAt), "HH:mm"));
-        Object.keys(TYPE_META).forEach(t => base[t].push(t === feedingType ? amountMl : 0));
+        Object.keys(TYPE_META).forEach(t =>
+          base[t].push(t === feedingType ? amountMl : 0)
+        );
         running += amountMl;
         cumArr.push(running);
       });
 
-    /* handle empty-day fallback so the axes don’t crash */
+    /* empty-day safeguard so chart renders without errors */
     if (lbls.length === 0) {
       lbls.push("—");
       Object.keys(TYPE_META).forEach(t => base[t].push(0));
@@ -73,9 +75,9 @@ export default function SummaryChart({ feeds = [], recommended = 0 }) {
     order          : 2,
   }));
 
-  /* line: running total */
   const datasets = [
     ...barSets,
+    /* cumulative total – accent-coloured line */
     {
       type           : "line",
       label          : "Cumulative total",
@@ -84,9 +86,10 @@ export default function SummaryChart({ feeds = [], recommended = 0 }) {
       backgroundColor: accent,
       tension        : 0.25,
       pointRadius    : 3,
-      yAxisID        : "y",
-      order          : 1,          // make the line draw on top
+      yAxisID        : "lin",      // hidden axis – keeps it out of the bar stack
+      order          : 1,
     },
+    /* recommended – grey dashed line */
     {
       type        : "line",
       label       : "Recommended",
@@ -95,7 +98,7 @@ export default function SummaryChart({ feeds = [], recommended = 0 }) {
       borderDash  : [4, 4],
       pointRadius : 0,
       tension     : 0,
-      yAxisID     : "y",
+      yAxisID     : "lin",
       order       : 0,
     },
   ];
@@ -103,9 +106,14 @@ export default function SummaryChart({ feeds = [], recommended = 0 }) {
   const options = {
     responsive          : true,
     maintainAspectRatio : false,
-    interaction         : { mode:"index", intersect:false },
-    plugins             : { legend:{ position:"top" } },
-    scales              : { y:{ beginAtZero:true, stacked:true } },
+    interaction         : { mode: "index", intersect: false },
+    plugins             : { legend: { position: "top" } },
+    scales              : {
+      /* bars – stacked */
+      y  : { beginAtZero: true, stacked: true },
+      /* lines – same scale, hidden */
+      lin: { beginAtZero: true, display: false },
+    },
   };
 
   return (
