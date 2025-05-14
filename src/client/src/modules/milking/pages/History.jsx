@@ -11,7 +11,12 @@ import api           from "../api.js";
 import DayCard       from "../components/DayCard.jsx";
 import AllDaysChart  from "../components/AllDaysChart.jsx";
 
-const FEED_TYPES    = ["BREAST_DIRECT","BREAST_BOTTLE","FORMULA_PUMP","FORMULA_BOTTLE"];
+const FEED_TYPES    = [
+  "BREAST_DIRECT",
+  "BREAST_BOTTLE",
+  "FORMULA_PUMP",
+  "FORMULA_BOTTLE",
+];
 const DAYS_PER_PAGE = 50;
 
 const rt       = window.__ENV__ || {};
@@ -21,15 +26,17 @@ const birthDay = birthTs ? startOfDay(birthTs) : startOfDay(new Date());
 const today    = startOfDay(new Date());
 
 export default function MilkingHistory() {
-  const [page,setPage]       = useState(0);
-  const [recs,setRecs]       = useState([]);
-  const [feedsByDay,setData] = useState({});
-  const [err,setErr]         = useState("");
-  const [loading,setLoading] = useState(false);
-  const [done,setDone]       = useState(false);
+  const [page,         setPage]  = useState(0);
+  const [recs,         setRecs]  = useState([]);
+  const [feedsByDay,   setData]  = useState({});
+  const [err,          setErr]   = useState("");
+  const [loading,      setLoading] = useState(false);
+  const [done,         setDone]  = useState(false);
 
   /* recommendations once */
-  useEffect(() => { api.listRecs().then(setRecs).catch(e => setErr(e.message)); }, []);
+  useEffect(() => {
+    api.listRecs().then(setRecs).catch(e => setErr(e.message));
+  }, []);
 
   /* paged loader birth→today */
   useEffect(() => {
@@ -43,9 +50,10 @@ export default function MilkingHistory() {
         if (date > today) { setDone(true); break; }
         const dayStr = format(date, "yyyy-MM-dd");
         batch.push(
-          api.listFeeds(dayStr)
-             .then(rows => ({ dayStr, date, rows }))
-             .catch(()  => ({ dayStr, date, rows: [] }))
+          api
+            .listFeeds(dayStr)
+            .then(rows => ({ dayStr, date, rows }))
+            .catch(()  => ({ dayStr, date, rows: [] }))
         );
       }
       const res = await Promise.all(batch);
@@ -57,8 +65,9 @@ export default function MilkingHistory() {
     })();
   }, [page, done]);
 
-  /* build arrays for chart */
-  const ordered = Object.values(feedsByDay).sort((a,b) => b.date - a.date);
+  /* build arrays for multi-day chart */
+  const ordered = Object.values(feedsByDay)
+                         .sort((a, b) => b.date - a.date);   // newest first
 
   const labels      = [];
   const recommended = [];
@@ -81,8 +90,13 @@ export default function MilkingHistory() {
       {err && <p style={{ color:"#c00", padding:"0 1rem" }}>{err}</p>}
 
       <main>
+        {/* big timeline chart stays unchanged */}
         {labels.length > 0 && (
-          <AllDaysChart labels={labels} stacks={stacks} recommended={recommended} />
+          <AllDaysChart
+            labels={labels}
+            stacks={stacks}
+            recommended={recommended}
+          />
         )}
 
         {ordered.map(({ dayStr, date, rows }) => (
@@ -90,12 +104,40 @@ export default function MilkingHistory() {
             key={dayStr}
             date={date}
             feeds={rows}
-            onUpdate={(id,p)=>api.updateFeed(id,p)
-                               .then(()=>setData(d=>({...d,[dayStr]:{...d[dayStr],rows:d[dayStr].rows.map(r=>r.id===id?{...r,...p}:r)}})))
-                               .catch(e=>setErr(e.message))}
-            onDelete={(id)=>api.deleteFeed(id)
-                               .then(()=>setData(d=>({...d,[dayStr]:{...d[dayStr],rows:d[dayStr].rows.filter(r=>r.id!==id)}})))
-                               .catch(e=>setErr(e.message))}
+            /* pass that day’s recommendation for the per-day chart */
+            recommended={
+              recs.find(
+                r => r.ageDays === differenceInCalendarDays(date, birthDay)
+              )?.totalMl ?? 0
+            }
+            onUpdate={(id, p) =>
+              api.updateFeed(id, p)
+                 .then(() =>
+                   setData(d => ({
+                     ...d,
+                     [dayStr]: {
+                       ...d[dayStr],
+                       rows: d[dayStr].rows.map(r =>
+                         r.id === id ? { ...r, ...p } : r
+                       ),
+                     },
+                   }))
+                 )
+                 .catch(e => setErr(e.message))
+            }
+            onDelete={(id) =>
+              api.deleteFeed(id)
+                 .then(() =>
+                   setData(d => ({
+                     ...d,
+                     [dayStr]: {
+                       ...d[dayStr],
+                       rows: d[dayStr].rows.filter(r => r.id !== id),
+                     },
+                   }))
+                 )
+                 .catch(e => setErr(e.message))
+            }
           />
         ))}
 
