@@ -2,25 +2,23 @@ import React, { useMemo } from "react";
 import { Bar } from "react-chartjs-2";
 import {
   Chart as ChartJS,
-  CategoryScale,
+  CategoryScale,   // kept for internal defaults
   LinearScale,
+  TimeScale,      // NEW – true time axis
   BarElement,
   PointElement,
   LineElement,
   Tooltip,
   Legend,
 } from "chart.js";
-import { format } from "date-fns";
+import "chartjs-adapter-date-fns";           // 👈 required adapter
+import { startOfDay, endOfDay } from "date-fns";
 import { accentColor } from "../../../theme.js";
 
 ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  PointElement,
-  LineElement,
-  Tooltip,
-  Legend
+  CategoryScale, LinearScale, TimeScale,
+  BarElement, PointElement, LineElement,
+  Tooltip, Legend
 );
 
 /* ─────────────────────────── colour + icon map ──────────────────── */
@@ -33,86 +31,109 @@ const TYPE_META = {
 
 export default function SummaryChart({ feeds = [], recommended = 0 }) {
   /* ----------------------------------------------------------------
-   * Build per-feed stacks and running cumulative total
+   *  Build datasets – bars per feed + cumulative line
    * ---------------------------------------------------------------- */
-  const { labels, stacks, cumulative } = useMemo(() => {
-    const lbls   = [];
-    const base   = Object.fromEntries(Object.keys(TYPE_META).map(k => [k, []]));
-    const cumArr = [];
+  const {
+    barDataByType,   // { FEED_TYPE: [ {x,timestamp, y,amount}, … ] }
+    cumulativeLine,  // [ {x, y}, … ]
+    startTs, endTs,
+  } = useMemo(() => {
+    /* if no feeds → today’s bounds */
+    const baseDate = feeds.length ? new Date(feeds[0].fedAt) : new Date();
+    const dayStart = startOfDay(baseDate);
+    const dayEnd   = endOfDay(baseDate);
 
+    /* initialise */
+    const byType = Object.fromEntries(
+      Object.keys(TYPE_META).map(k => [k, []])
+    );
+    const cumLine = [];
     let running = 0;
+
     [...feeds]
       .sort((a, b) => new Date(a.fedAt) - new Date(b.fedAt))   // chronological
       .forEach(({ fedAt, feedingType, amountMl }) => {
-        lbls.push(format(new Date(fedAt), "HH:mm"));
-        Object.keys(TYPE_META).forEach(t =>
-          base[t].push(t === feedingType ? amountMl : 0)
-        );
+        const ts = new Date(fedAt);
+        byType[feedingType].push({ x: ts, y: amountMl });
         running += amountMl;
-        cumArr.push(running);
+        cumLine.push({ x: ts, y: running });
       });
 
-    /* empty-day safeguard so chart renders without errors */
-    if (lbls.length === 0) {
-      lbls.push("—");
-      Object.keys(TYPE_META).forEach(t => base[t].push(0));
-      cumArr.push(0);
+    /* ensure at least one point so line renders */
+    if (cumLine.length === 0) {
+      cumLine.push({ x: dayStart, y: 0 });
     }
 
-    return { labels: lbls, stacks: base, cumulative: cumArr };
+    return { barDataByType: byType, cumulativeLine: cumLine,
+             startTs: dayStart, endTs: dayEnd };
   }, [feeds]);
 
   const accent = accentColor();
 
-  /* stacked bar datasets (one per feed-type) */
+  /* ── bar datasets (one per feed-type) ───────────────────────────── */
   const barSets = Object.entries(TYPE_META).map(([code, meta]) => ({
     type           : "bar",
     label          : meta.lbl,
-    data           : stacks[code],
+    data           : barDataByType[code],
     backgroundColor: meta.c,
-    stack          : "feeds",
+    // keep bars thin so individual feeds are visible
+    barThickness   : 8,
+    borderSkipped  : false,
     yAxisID        : "y",
-    order          : 2,
+    order          : 2,            // drawn under the line
   }));
 
+  /* ── cumulative & recommended lines ─────────────────────────────── */
   const datasets = [
     ...barSets,
-    /* cumulative total – accent-coloured line */
     {
       type           : "line",
       label          : "Cumulative total",
-      data           : cumulative,
+      data           : cumulativeLine,
       borderColor    : accent,
       backgroundColor: accent,
       tension        : 0.25,
+      stepped        : true,       // clearer “step-up” look
       pointRadius    : 3,
-      yAxisID        : "lin",      // hidden axis – keeps it out of the bar stack
+      yAxisID        : "lin",
       order          : 1,
     },
-    /* recommended – grey dashed line */
     {
       type        : "line",
       label       : "Recommended",
-      data        : labels.map(() => recommended),
+      data        : [
+        { x: startTs, y: recommended },
+        { x: endTs,   y: recommended },
+      ],
       borderColor : "#9ca3af",
       borderDash  : [4, 4],
       pointRadius : 0,
       tension     : 0,
+      stepped     : true,
       yAxisID     : "lin",
       order       : 0,
     },
   ];
 
+  /* ── chart options ──────────────────────────────────────────────── */
   const options = {
-    responsive          : true,
-    maintainAspectRatio : false,
-    interaction         : { mode: "index", intersect: false },
-    plugins             : { legend: { position: "top" } },
-    scales              : {
-      /* bars – stacked */
-      y  : { beginAtZero: true, stacked: true },
-      /* lines – same scale, hidden */
-      lin: { beginAtZero: true, display: false },
+    responsive         : true,
+    maintainAspectRatio: false,
+    interaction        : { mode: "index", intersect: false },
+    plugins            : { legend: { position: "top" } },
+    scales             : {
+      /* y – stacked bars */
+      y  : { beginAtZero: true, stacked: true, title: { display: true, text: "ml" } },
+      /* lin – hidden, for the two lines */
+      lin: { display: false, beginAtZero: true },
+      /* x – true time axis covering the whole day */
+      x  : {
+        type : "time",
+        time : { unit: "hour", displayFormats: { hour: "HH:mm" } },
+        min  : startTs,
+        max  : endTs,
+        title: { display: true, text: "Time of day" },
+      },
     },
   };
 
@@ -120,7 +141,8 @@ export default function SummaryChart({ feeds = [], recommended = 0 }) {
     <>
       <h3>Intake over the day</h3>
       <div style={{ height: 320 }}>
-        <Bar data={{ labels, datasets }} options={options} />
+        {/* “labels” array not needed when using a time axis */}
+        <Bar data={{ datasets }} options={options} />
       </div>
     </>
   );
