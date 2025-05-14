@@ -3,7 +3,7 @@ import {
   startOfToday,
   format,
   differenceInCalendarDays,
-  differenceInMinutes,          // ← NEW
+  differenceInMinutes,
 } from "date-fns";
 
 import Header        from "../../../components/Header.jsx";
@@ -15,7 +15,7 @@ import SummaryChart  from "../components/SummaryChart.jsx";
 const rt      = window.__ENV__ || {};
 const birthTs = rt.birthTs ? new Date(rt.birthTs) : null;
 
-/* helper: “1 h 23 m” / “45 m” ------------------------------------ */
+/* helper: “1 h 23 m” / “45 m” */
 function fmtMinutes(min) {
   const h = Math.floor(min / 60);
   const m = min % 60;
@@ -35,7 +35,7 @@ export default function MilkingDashboard() {
     return () => clearInterval(id);
   }, []);
 
-  /* ─── flip to next day right after midnight ────────────────────── */
+  /* flip to next day right after midnight */
   useEffect(() => {
     const id = setInterval(() => {
       const today = startOfToday();
@@ -61,21 +61,20 @@ export default function MilkingDashboard() {
   /* today’s recommendation & age */
   const ageDays  = birthTs ? differenceInCalendarDays(date, birthTs) : null;
   const recToday = recs.find(r => r.ageDays === ageDays)?.totalMl ?? 0;
-  const ageText  = ageDays != null ? `${ageDays} days` : "";
 
-  /* ─── NEW: time since last feed today ──────────────────────────── */
+  /* time since last feed today */
   const lastFeedAt = feeds.length ? new Date(feeds[feeds.length - 1].fedAt) : null;
   const minsSince  = lastFeedAt ? differenceInMinutes(now, lastFeedAt) : null;
   const didntEat   = minsSince != null ? fmtMinutes(minsSince) : "—";
 
   return (
     <>
-      <Header extra={ageText} />
+      <Header />
 
       {err && <p style={{ color:"#c00", padding:"0 1rem" }}>{err}</p>}
 
       <main>
-        {/* ─── “didn’t eat for …” banner – updates every minute ─── */}
+        {/* “didn’t eat for …” banner */}
         <section className="card" style={{ marginBottom:"1.5rem" }}>
           <strong>Didn’t eat for:</strong>{" "}
           {lastFeedAt
