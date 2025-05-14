@@ -1,15 +1,6 @@
-/**
- * Very small “session config” helper.
- *
- * • Data live only in sessionStorage – clearing the tab/browser resets it.
- * • Structure:
- *     {
- *       theme        : "boy" | "girl" | null,   // null ⇒ fallback to ENV
- *       mode         : "light" | "dark" | null, // null ⇒ fallback to ENV
- *       disabledTypes: [ "BREAST_DIRECT", … ]
- *     }
- */
-const STORAGE_KEY = "web_baby_cfg";
+/* ────────────────────────────────────────────────────────────────────
+ *  Central application configuration – now persisted on the server
+ * ──────────────────────────────────────────────────────────────────── */
 
 export const ALL_TYPES = [
   "BREAST_DIRECT",
@@ -19,35 +10,45 @@ export const ALL_TYPES = [
 ];
 
 const DEFAULT_CFG = {
-  theme        : null,
-  mode         : null,
+  theme        : "boy",
+  mode         : "light",
   disabledTypes: [],
 };
 
-/* ─── storage helpers ─────────────────────────────────────────────── */
-export function loadConfig() {
+let CACHE = { ...DEFAULT_CFG };
+
+/* first thing called from index.jsx */
+export async function initConfig(env = { theme:"boy" }) {
   try {
-    return { ...DEFAULT_CFG, ...(JSON.parse(sessionStorage.getItem(STORAGE_KEY)) || {}) };
+    const r = await fetch("/api/config");
+    if (r.ok) {
+      CACHE = { ...DEFAULT_CFG, ...(await r.json()) };
+    } else {
+      CACHE = { ...DEFAULT_CFG, theme:env.theme || "boy" };
+    }
   } catch {
-    return { ...DEFAULT_CFG };
+    CACHE = { ...DEFAULT_CFG, theme:env.theme || "boy" };
   }
 }
 
-export function saveConfig(cfg) {
-  sessionStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
-}
+export function loadConfig() { return CACHE; }
 
-/* ─── derived helpers ─────────────────────────────────────────────── */
 export function effectiveTheme(envTheme = "boy") {
-  const { theme } = loadConfig();
-  return theme ?? envTheme;
+  return CACHE.theme ?? envTheme;
 }
-
 export function effectiveMode(envMode = "light") {
-  const { mode } = loadConfig();
-  return mode ?? envMode;
+  return CACHE.mode ?? envMode;
+}
+export function isTypeEnabled(t) {
+  return !CACHE.disabledTypes.includes(t);
 }
 
-export function isTypeEnabled(type) {
-  return !loadConfig().disabledTypes.includes(type);
+/* save to DB and cache locally */
+export async function saveConfig(partial) {
+  CACHE = { ...CACHE, ...partial };
+  await fetch("/api/config", {
+    method :"PUT",
+    headers: { "Content-Type":"application/json" },
+    body   : JSON.stringify(CACHE),
+  });
 }

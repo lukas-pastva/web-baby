@@ -2,17 +2,29 @@ import "./styles.css";
 import React          from "react";
 import { createRoot } from "react-dom/client";
 import AppRoutes      from "./routes.jsx";
-import { effectiveTheme, effectiveMode } from "./config.js";
+import {
+  initConfig,
+  effectiveTheme,
+  effectiveMode,
+} from "./config.js";
 
-/* ─── apply theme (boy/girl) ─────────────────────────────────────── */
-const env = window.__ENV__ || {};
+/* bootstrap – pull config, apply theme/mode, then mount SPA */
+(async () => {
+  const env = window.__ENV__ || {};
 
-const theme = effectiveTheme(env.theme || "boy");
-document.documentElement.setAttribute("data-theme", theme);
+  /* pulls (or creates) the single config row */
+  await initConfig(env);
 
-/* ─── apply light/dark mode ──────────────────────────────────────── */
-const mode = effectiveMode("light");
-document.documentElement.setAttribute("data-mode", mode);
+  /* apply theme + light/dark mode */
+  document.documentElement.setAttribute(
+    "data-theme",
+    effectiveTheme(env.theme || "boy")
+  );
+  document.documentElement.setAttribute(
+    "data-mode",
+    effectiveMode("light")
+  );
 
-/* ─── mount the SPA ──────────────────────────────────────────────── */
-createRoot(document.getElementById("root")).render(<AppRoutes />);
+  /* mount React app */
+  createRoot(document.getElementById("root")).render(<AppRoutes />);
+})();

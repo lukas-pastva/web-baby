@@ -9,32 +9,33 @@ import { syncAll }    from "./modules/milking/seed.js";
 import weightRoutes   from "./modules/weight/routes.js";
 import { syncWeight } from "./modules/weight/seed.js";
 
-/* ───────────────────────────────────────────────────────── bootstrap */
+/* ─── NEW: config module ─────────────────────────────────────────── */
+import configRoutes   from "./modules/config/routes.js";
+import { syncConfig } from "./modules/config/seed.js";
+
+/* ─── bootstrap ──────────────────────────────────────────────────── */
 dotenv.config();
-await Promise.all([syncAll(), syncWeight()]);
+await Promise.all([syncAll(), syncWeight(), syncConfig()]);
 
 const app  = express();
 const port = process.env.PORT || 8080;
 
-/* ───────────────────────────────────────────────────────── middleware */
+/* middleware */
 app.use(cors());
 app.use(express.json());
 
-/* ───────────────────────────────────────────────────────── API routes */
+/* API routes */
 app.use(milkingRoutes);
 app.use(weightRoutes);
+app.use(configRoutes);          // ← NEW
 
-/* ───────────────────────────────────────────────────────── runtime env
-   Exposes /env.js which the frontend loads *before* React boots.       */
+/* /env.js for the frontend */
 app.get("/env.js", (_req, res) => {
   res.type("application/javascript");
 
-  /* helper – keep numeric-timestamp strings numeric */
   const normBirthTs = (v) => (v && /^\d+$/.test(v) ? Number(v) : v || "");
-
-  /* guard against typos – only “boy” or “girl” accepted */
-  const rawTheme = (process.env.BABY_THEME || "").toLowerCase();
-  const theme    = rawTheme === "girl" ? "girl" : "boy";
+  const rawTheme    = (process.env.BABY_THEME || "").toLowerCase();
+  const theme       = rawTheme === "girl" ? "girl" : "boy";
 
   res.send(
     `window.__ENV__ = ${JSON.stringify({
@@ -47,12 +48,11 @@ app.get("/env.js", (_req, res) => {
   );
 });
 
-/* ───────────────────────────────────────────────────────── static SPA */
+/* static SPA */
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 app.use(express.static(path.join(__dirname, "../public")));
 app.get("*", (_req, res) =>
   res.sendFile(path.join(__dirname, "../public/index.html"))
 );
 
-/* ───────────────────────────────────────────────────────── start □ ■  */
 app.listen(port, () => console.log(`Web-Baby listening on ${port}`));
