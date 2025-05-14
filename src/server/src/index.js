@@ -9,11 +9,11 @@ import { syncAll }    from "./modules/milking/seed.js";
 import weightRoutes   from "./modules/weight/routes.js";
 import { syncWeight } from "./modules/weight/seed.js";
 
-/* ─── NEW: config module ─────────────────────────────────────────── */
+/* ─── config module ─────────────────────────────────────────────── */
 import configRoutes   from "./modules/config/routes.js";
 import { syncConfig } from "./modules/config/seed.js";
 
-/* ─── bootstrap ──────────────────────────────────────────────────── */
+/* ─── bootstrap ─────────────────────────────────────────────────── */
 dotenv.config();
 await Promise.all([syncAll(), syncWeight(), syncConfig()]);
 
@@ -27,23 +27,18 @@ app.use(express.json());
 /* API routes */
 app.use(milkingRoutes);
 app.use(weightRoutes);
-app.use(configRoutes);          // ← NEW
+app.use(configRoutes);
 
-/* /env.js for the frontend */
+/* /env.js for the frontend – minimal (birth timestamp & title only) */
 app.get("/env.js", (_req, res) => {
   res.type("application/javascript");
 
   const normBirthTs = (v) => (v && /^\d+$/.test(v) ? Number(v) : v || "");
-  const rawTheme    = (process.env.BABY_THEME || "").toLowerCase();
-  const theme       = rawTheme === "girl" ? "girl" : "boy";
 
   res.send(
     `window.__ENV__ = ${JSON.stringify({
-      birthTs     : normBirthTs(process.env.BIRTH_TS),
-      childName   : process.env.CHILD_NAME    || "",
-      childSurname: process.env.CHILD_SURNAME || "",
-      appTitle    : process.env.APP_TITLE     || "Web-Baby",
-      theme,
+      birthTs : normBirthTs(process.env.BIRTH_TS),
+      appTitle: process.env.APP_TITLE || "Web-Baby",
     })};`
   );
 });

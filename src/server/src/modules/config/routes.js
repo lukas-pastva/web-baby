@@ -17,13 +17,21 @@ r.get("/api/config", async (_req, res) => {
 
 /* PUT  → update config */
 r.put("/api/config", async (req, res) => {
-  const row                    = await getRow();
-  const { theme, mode, disabledTypes } = req.body;
+  const row = await getRow();
+  const {
+    theme,
+    mode,
+    disabledTypes,
+    childName,
+    childSurname,
+  } = req.body;
 
   await row.update({
     theme        : ["boy","girl"].includes(theme)   ? theme         : row.theme,
     mode         : ["light","dark"].includes(mode)  ? mode          : row.mode,
     disabledTypes: Array.isArray(disabledTypes)     ? disabledTypes : row.disabledTypes,
+    childName    : typeof childName === "string"    ? childName     : row.childName,
+    childSurname : typeof childSurname === "string" ? childSurname  : row.childSurname,
   });
 
   res.json(row);

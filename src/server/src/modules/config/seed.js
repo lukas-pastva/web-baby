@@ -5,6 +5,13 @@ export async function syncConfig() {
   await AppConfig.sync();
   const count = await AppConfig.count();
   if (count === 0) {
-    await AppConfig.create({ id:1, theme:"boy", mode:"light", disabledTypes:[] });
+    await AppConfig.create({
+      id           : 1,
+      theme        : "boy",
+      mode         : "light",
+      disabledTypes: [],
+      childName    : "",
+      childSurname : "",
+    });
   }
 }

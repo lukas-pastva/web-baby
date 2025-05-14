@@ -11,18 +11,22 @@ import { loadConfig, saveConfig } from "../config.js";
  * • showMeta — show / hide child-name + age block (default = true)
  */
 export default function Header({ showMeta = true }) {
-  const p     = window.location.pathname;
-  const rt    = window.__ENV__ || {};
-  const child = `${rt.childName || ""} ${rt.childSurname || ""}`.trim();
+  const p  = window.location.pathname;
+  const rt = window.__ENV__ || {};          // birthTs + appTitle only
+
+  const {
+    childName    = "",
+    childSurname = "",
+    mode: storedMode = null,
+  } = loadConfig();
 
   /* ─── age calc (days) ──────────────────────────────────────────── */
-  const birthTs = rt.birthTs ? new Date(rt.birthTs) : null;
-  const ageText = birthTs
-    ? `${differenceInCalendarDays(startOfToday(), birthTs)} days`
+  const birthDate = rt.birthTs ? new Date(rt.birthTs) : null;
+  const ageText   = birthDate
+    ? `${differenceInCalendarDays(startOfToday(), birthDate)} days`
     : "";
 
   /* ─── mode toggle state ────────────────────────────────────────── */
-  const { mode: storedMode = null } = loadConfig();
   const [mode, setMode] = useState(storedMode || "light");
 
   function toggleMode() {
@@ -33,6 +37,7 @@ export default function Header({ showMeta = true }) {
   }
 
   const modeIcon = mode === "light" ? "🌙" : "☀️";
+  const child    = `${childName} ${childSurname}`.trim();
 
   /* ─── UI ───────────────────────────────────────────────────────── */
   return (
@@ -50,7 +55,6 @@ export default function Header({ showMeta = true }) {
 
       {/* right-hand block – mode toggle + meta */}
       <div style={{ display:"flex", alignItems:"center", gap:".9rem" }}>
-        {/* light / dark switch */}
         <button
           className="mode-toggle"
           onClick={toggleMode}
@@ -59,7 +63,6 @@ export default function Header({ showMeta = true }) {
           {modeIcon}
         </button>
 
-        {/* child name + age */}
         {showMeta && (child || ageText) && (
           <div className="meta" style={{ textAlign:"right", lineHeight:1.2 }}>
             {child && <strong>{child}</strong>}

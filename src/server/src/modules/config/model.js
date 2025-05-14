@@ -9,6 +9,8 @@ export const AppConfig = db.define(
     theme        : { type: DataTypes.ENUM("boy", "girl"),  allowNull:false, defaultValue:"boy" },
     mode         : { type: DataTypes.ENUM("light", "dark"),allowNull:false, defaultValue:"light" },
     disabledTypes: { type: DataTypes.JSON,                 allowNull:false, defaultValue: [] },
+    childName    : { type: DataTypes.STRING(64),           allowNull:false, defaultValue:""  },
+    childSurname : { type: DataTypes.STRING(64),           allowNull:false, defaultValue:""  },
   },
   { timestamps:false }
 );

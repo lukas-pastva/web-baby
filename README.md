@@ -13,11 +13,9 @@ baby’s milk intake.
 | DB_PASSWORD       |          | `hunter2`                                 |
 | DB_PORT           |          | `3306`                                    |
 | **BIRTH_TS**      |          | `2025-04-28T07:42:00Z` *(ISO)*            |
-| **CHILD_NAME**    |          | `Alice`                                   |
-| **CHILD_SURNAME** |          | `Smith`                                   |
-| **BABY_THEME**    |          | `boy` (default) or `girl` 🎀 **NEW**      |
 
 \* Provide either `DATABASE_URL` **or** the individual `DB_*` variables.
 
-When `BABY_THEME` is set to `girl` the whole UI switches to a pink accent
-palette; omit it (or set `boy`) for the teal palette.
+**Theme, baby name and feed-type visibility are now persisted in the database
+and can be changed at any time from the in-app <kbd>Config</kbd> page – no
+environment variables needed.**

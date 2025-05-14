@@ -1,5 +1,5 @@
 /* ────────────────────────────────────────────────────────────────────
- *  Central application configuration – now persisted on the server
+ *  Central application configuration – persisted on the server
  * ──────────────────────────────────────────────────────────────────── */
 
 export const ALL_TYPES = [
@@ -13,21 +13,21 @@ const DEFAULT_CFG = {
   theme        : "boy",
   mode         : "light",
   disabledTypes: [],
+  childName    : "",
+  childSurname : "",
 };
 
 let CACHE = { ...DEFAULT_CFG };
 
 /* first thing called from index.jsx */
-export async function initConfig(env = { theme:"boy" }) {
+export async function initConfig(env = {}) {
   try {
     const r = await fetch("/api/config");
-    if (r.ok) {
-      CACHE = { ...DEFAULT_CFG, ...(await r.json()) };
-    } else {
-      CACHE = { ...DEFAULT_CFG, theme:env.theme || "boy" };
-    }
+    CACHE = r.ok
+      ? { ...DEFAULT_CFG, ...(await r.json()) }
+      : { ...DEFAULT_CFG };
   } catch {
-    CACHE = { ...DEFAULT_CFG, theme:env.theme || "boy" };
+    CACHE = { ...DEFAULT_CFG };
   }
 }
 
