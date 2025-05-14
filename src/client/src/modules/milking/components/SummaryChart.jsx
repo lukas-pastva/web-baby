@@ -10,6 +10,7 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
+import { format } from "date-fns";
 import { accentColor } from "../../../theme.js";
 
 ChartJS.register(
@@ -22,6 +23,7 @@ ChartJS.register(
   Legend
 );
 
+/* ─────────────────────────── colour + icon map ──────────────────── */
 const TYPE_META = {
   BREAST_DIRECT : { c: "#f4a261", lbl: "🤱 Direct"      },
   BREAST_BOTTLE : { c: "#2a9d8f", lbl: "🤱🍼 Bottle"     },
@@ -30,47 +32,71 @@ const TYPE_META = {
 };
 
 export default function SummaryChart({ feeds = [], recommended = 0 }) {
-  /* sum per feed-type */
-  const sums = useMemo(() => {
-    const base = Object.fromEntries(Object.keys(TYPE_META).map(k => [k, 0]));
-    feeds.forEach(f => { base[f.feedingType] += f.amountMl; });
-    return base;
+  /* ----------------------------------------------------------------
+   *  Prepare *per-feed* stacks plus a running cumulative total
+   * ---------------------------------------------------------------- */
+  const { labels, stacks, cumulative } = useMemo(() => {
+    const lbls   = [];
+    const base   = Object.fromEntries(Object.keys(TYPE_META).map(k => [k, []]));
+    const cumArr = [];
+
+    let running = 0;
+    [...feeds]
+      .sort((a, b) => new Date(a.fedAt) - new Date(b.fedAt))       // chronological
+      .forEach(({ fedAt, feedingType, amountMl }) => {
+        lbls.push(format(new Date(fedAt), "HH:mm"));
+        Object.keys(TYPE_META).forEach(t => base[t].push(t === feedingType ? amountMl : 0));
+        running += amountMl;
+        cumArr.push(running);
+      });
+
+    /* handle empty-day fallback so the axes don’t crash */
+    if (lbls.length === 0) {
+      lbls.push("—");
+      Object.keys(TYPE_META).forEach(t => base[t].push(0));
+      cumArr.push(0);
+    }
+
+    return { labels: lbls, stacks: base, cumulative: cumArr };
   }, [feeds]);
 
   const accent = accentColor();
-  const labels = ["Today"];                     // single column
 
+  /* stacked bar datasets (one per feed-type) */
   const barSets = Object.entries(TYPE_META).map(([code, meta]) => ({
     type           : "bar",
     label          : meta.lbl,
-    data           : [sums[code]],
+    data           : stacks[code],
     backgroundColor: meta.c,
     stack          : "feeds",
     yAxisID        : "y",
+    order          : 2,
   }));
 
-  const total = Object.values(sums).reduce((a, b) => a + b, 0);
-
+  /* line: running total */
   const datasets = [
     ...barSets,
     {
-      type        : "line",
-      label       : "Total",
-      data        : [total],
-      borderColor : accent,
+      type           : "line",
+      label          : "Cumulative total",
+      data           : cumulative,
+      borderColor    : accent,
       backgroundColor: accent,
-      tension     : 0.25,
-      yAxisID     : "y",
+      tension        : 0.25,
+      pointRadius    : 3,
+      yAxisID        : "y",
+      order          : 1,          // make the line draw on top
     },
     {
       type        : "line",
       label       : "Recommended",
-      data        : [recommended],
+      data        : labels.map(() => recommended),
       borderColor : "#9ca3af",
       borderDash  : [4, 4],
-      pointRadius : 3,
-      tension     : 0.25,
-      yAxisID     : "rec",
+      pointRadius : 0,
+      tension     : 0,
+      yAxisID     : "y",
+      order       : 0,
     },
   ];
 
@@ -79,16 +105,13 @@ export default function SummaryChart({ feeds = [], recommended = 0 }) {
     maintainAspectRatio : false,
     interaction         : { mode:"index", intersect:false },
     plugins             : { legend:{ position:"top" } },
-    scales              : {
-      y  : { stacked:true, beginAtZero:true },
-      rec: { display:false, beginAtZero:true },
-    },
+    scales              : { y:{ beginAtZero:true, stacked:true } },
   };
 
   return (
     <>
-      <h3>Total for the day</h3>
-      <div style={{ height: 300 }}>
+      <h3>Intake over the day</h3>
+      <div style={{ height: 320 }}>
         <Bar data={{ labels, datasets }} options={options} />
       </div>
     </>
