@@ -12,6 +12,15 @@ r.get("/api/milking/recommendations", async (_req, res) => {
 });
 
 /* ------------------------------------------------------------------ */
+/*  NEW – Latest feed (any date)                                      */
+/* ------------------------------------------------------------------ */
+r.get("/api/milking/feeds/last", async (_req, res) => {
+  const last = await Feed.findOne({ order: [["fedAt", "DESC"]] });
+  if (!last) return res.status(204).end();        // none yet
+  res.json(last);
+});
+
+/* ------------------------------------------------------------------ */
 /*  Feeds – list (by date range)                                      */
 /* ------------------------------------------------------------------ */
 r.get("/api/milking/feeds", async (req, res) => {
@@ -38,6 +47,7 @@ r.post("/api/milking/feeds", async (req, res) => {
   res.json(await Feed.create({ fedAt, amountMl, feedingType }));
 });
 
+/* ------------------------------------------------------------------ */
 /* ------------------------------------------------------------------ */
 /*  Feeds – update                                                    */
 /* ------------------------------------------------------------------ */

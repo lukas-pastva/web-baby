@@ -29,12 +29,11 @@ export default {
     return json(fetch("/api/milking/recommendations"));
   },
 
-  /* feeds ----------------------------------------------------------- */
-  /**
-   * Return all feeds that fall within the *local* calendar day.
-   * We send an explicit timezone-aware range instead of naïve UTC
-   * midnight → 23:59 so entries around midnight never bleed over.
-   */
+  latestFeed () {
+    return json(fetch("/api/milking/feeds/last"));
+  },
+
+  /* feeds for one calendar day ------------------------------------- */
   listFeeds(day) {
     const tz      = tzOffsetString();
     const fromIso = `${day}T00:00:00${tz}`;
