@@ -5,6 +5,7 @@
  * • Structure:
  *     {
  *       theme        : "boy" | "girl" | null,   // null ⇒ fallback to ENV
+ *       mode         : "light" | "dark" | null, // null ⇒ fallback to ENV
  *       disabledTypes: [ "BREAST_DIRECT", … ]
  *     }
  */
@@ -19,9 +20,11 @@ export const ALL_TYPES = [
 
 const DEFAULT_CFG = {
   theme        : null,
+  mode         : null,
   disabledTypes: [],
 };
 
+/* ─── storage helpers ─────────────────────────────────────────────── */
 export function loadConfig() {
   try {
     return { ...DEFAULT_CFG, ...(JSON.parse(sessionStorage.getItem(STORAGE_KEY)) || {}) };
@@ -34,10 +37,15 @@ export function saveConfig(cfg) {
   sessionStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
 }
 
-/* helpers */
+/* ─── derived helpers ─────────────────────────────────────────────── */
 export function effectiveTheme(envTheme = "boy") {
   const { theme } = loadConfig();
   return theme ?? envTheme;
+}
+
+export function effectiveMode(envMode = "light") {
+  const { mode } = loadConfig();
+  return mode ?? envMode;
 }
 
 export function isTypeEnabled(type) {

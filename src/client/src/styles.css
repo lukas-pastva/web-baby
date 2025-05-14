@@ -1,19 +1,41 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap");
 
-/* ─────────────────────────── theme vars */
+/* ─────────────────────────── theme vars (accent) */
 :root {
   --accent        : #18be94;      /* boy / teal */
   --accent-contr  : #ffffff;
   --header-bg     : #0f2733;      /* navy */
 }
+/* girl palette */
 [data-theme="girl"] {
-  --accent    : #e86dbf;          /* girl / pink */
-  --header-bg : #4d2748;          /* plum */
+  --accent    : #e86dbf;
+  --header-bg : #4d2748;
+}
+
+/* ─────────────────────────── colour-scheme vars  */
+:root[data-mode="light"] {
+  --bg-page : #f9fafb;
+  --bg-card : #ffffff;
+  --fg-text : #0f172a;
+  --row-alt : #f5f7fa;
+  --border  : #d2d8e0;
+}
+:root[data-mode="dark"] {
+  --bg-page : #111827;
+  --bg-card : #1f2937;
+  --fg-text : #e5e7eb;
+  --row-alt : #1e293b;
+  --border  : #374151;
 }
 
 /* ─────────────────────────── base */
 html { font-size: 95%; }
-body { margin: 0; font-family: "Inter", sans-serif; background:#f9fafb; }
+body {
+  margin: 0;
+  font-family: "Inter", sans-serif;
+  background: var(--bg-page);
+  color: var(--fg-text);
+}
 
 /* ─────────────────────────── header */
 header.mod-header{
@@ -56,10 +78,23 @@ header.mod-header nav a.active:hover{
   font-weight:600;
 }
 
+/* mode-toggle button */
+.mode-toggle{
+  background:none;
+  border:none;
+  font-size:1.35rem;
+  cursor:pointer;
+  line-height:1;
+  padding:0;
+  color:var(--accent-contr);
+  transition:transform .15s;
+}
+.mode-toggle:hover{ transform: scale(1.15); }
+
 /* ─────────────────────────── layout */
 main{padding:1rem}
 .card{
-  background:#fff;
+  background:var(--bg-card);
   border-radius:8px;
   padding:1rem 1.5rem;
   box-shadow:0 1px 4px rgba(0,0,0,.08);
@@ -89,10 +124,10 @@ button,input,select{font-size:1rem}
 
 /* tables */
 table{width:100%;border-collapse:collapse}
-thead th{border-bottom:2px solid #d2d8e0}
+thead th{border-bottom:2px solid var(--border)}
 th,td{padding:.5rem .6rem;text-align:left;font-size:.95rem}
-tbody tr{border-bottom:1px solid #e5e9f0}
-tbody tr:nth-child(odd){background:#f5f7fa}
+tbody tr{border-bottom:1px solid var(--border)}
+tbody tr:nth-child(odd){background:var(--row-alt)}
 
 /* feed icons */
 .feed-icon{font-size:1.25rem;margin-right:.25rem;vertical-align:text-bottom}
