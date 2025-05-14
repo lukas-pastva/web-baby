@@ -1,8 +1,28 @@
 import React, { useState } from "react";
 import { format } from "date-fns";
-import FeedTable from "./FeedTable.jsx";
+import FeedTable     from "./FeedTable.jsx";
+import SummaryChart  from "./SummaryChart.jsx";
 
-export default function DayCard({ date, feeds, onUpdate, onDelete }) {
+/**
+ * Collapsible “day card” that now shows:
+ *   • the feed table (editable)
+ *   • the per-day intake chart with recommended line
+ *
+ * Props
+ * ─────
+ * • date         – JS Date object for the day
+ * • feeds        – array of feed rows [{ fedAt, amountMl, feedingType, … }]
+ * • recommended  – number (ml) for that day’s suggested intake
+ * • onUpdate     – (id, payload) ⇒ Promise  (optional)
+ * • onDelete     – (id) ⇒ Promise           (optional)
+ */
+export default function DayCard({
+  date,
+  feeds,
+  recommended = 0,
+  onUpdate,
+  onDelete,
+}) {
   const [open, setOpen] = useState(false);
   const dayStr          = format(date, "eeee, d LLL yyyy");
 
@@ -27,7 +47,16 @@ export default function DayCard({ date, feeds, onUpdate, onDelete }) {
       </header>
 
       {open && (
-        <FeedTable rows={feeds} onUpdate={onUpdate} onDelete={onDelete} />
+        <>
+          <FeedTable
+            rows={feeds}
+            onUpdate={onUpdate}
+            onDelete={onDelete}
+          />
+
+          {/* per-day stacked/step chart (same look as Today dashboard) */}
+          <SummaryChart feeds={feeds} recommended={recommended} />
+        </>
       )}
     </section>
   );
