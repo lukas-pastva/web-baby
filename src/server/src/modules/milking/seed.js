@@ -1,16 +1,10 @@
 import { Recommendation, Feed } from "./model.js";
 
 /**
- * Synchronise both tables and seed **daily recommendations for the
- * first 90 days (three months)** of life.
- *
- * • Keeps the explicit values you already had for days 0-7.
- * • From day 8 onward the total intake rises smoothly:
- *     – 8-30 d  : ≈ 450 → 650 ml  | 7 meals
- *     – 31-60 d : ≈ 650 → 800 ml  | 6 meals
- *     – 61-89 d : ≈ 800 → 900 ml  | 5 meals
- * • Numbers are created with simple piece-wise linear maths for
- *   easy tweaking later.
+ * Build 90-day recommendation rows, each including:
+ *   • total ml per day
+ *   • meals per day
+ *   • NEW: ml per single meal (rounded)
  */
 function buildRecommendations() {
   const rows = [];
@@ -18,7 +12,7 @@ function buildRecommendations() {
   for (let ageDays = 0; ageDays < 90; ageDays++) {
     let totalMl, mealsPerDay;
 
-    /* ——— keep your original explicit first-week values ——— */
+    /* explicit first-week values */
     switch (ageDays) {
       case 0: totalMl = 60;  mealsPerDay = 8; break;
       case 1: totalMl = 90;  mealsPerDay = 8; break;
@@ -29,7 +23,7 @@ function buildRecommendations() {
       case 6: totalMl = 400; mealsPerDay = 6; break;
       case 7: totalMl = 450; mealsPerDay = 6; break;
 
-      /* ——— smooth ramp-up for the remaining days ——— */
+      /* piece-wise linear ramp-up for days 8-89 */
       default:
         if (ageDays <= 30) {               // 8-30 d
           const p = (ageDays - 7) / (30 - 7);
@@ -46,7 +40,8 @@ function buildRecommendations() {
         }
     }
 
-    rows.push({ ageDays, totalMl, mealsPerDay });
+    const perMealMl = Math.round(totalMl / mealsPerDay);
+    rows.push({ ageDays, totalMl, mealsPerDay, perMealMl });
   }
 
   return rows;
@@ -56,10 +51,9 @@ function buildRecommendations() {
 /*  Public – called once on server start                              */
 /* ------------------------------------------------------------------ */
 export async function syncAll() {
-  /* make sure both tables exist */
-  await Promise.all([Recommendation.sync(), Feed.sync()]);
+  /* `alter:true` adds the new column if the table already exists */
+  await Promise.all([Recommendation.sync({ alter:true }), Feed.sync()]);
 
-  /* seed only if empty */
   if (await Recommendation.count() === 0) {
     await Recommendation.bulkCreate(buildRecommendations());
   }

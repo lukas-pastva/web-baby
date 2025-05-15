@@ -15,6 +15,7 @@ export const Recommendation = db.define(
     ageDays     : { type: DataTypes.INTEGER, primaryKey: true },
     totalMl     : { type: DataTypes.INTEGER, allowNull: false },
     mealsPerDay : { type: DataTypes.INTEGER, allowNull: false },
+    perMealMl   : { type: DataTypes.INTEGER, allowNull: false },
   },
   { timestamps: false }
 );

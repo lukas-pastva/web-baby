@@ -13,7 +13,7 @@ import FeedTable     from "../components/FeedTable.jsx";
 import SummaryChart  from "../components/SummaryChart.jsx";
 import { loadConfig } from "../../../config.js";
 
-/* helper: “1 h 23 m” / “45 m” */
+/* helper – “1 h 23 m” / “45 m” */
 function fmtMinutes(min) {
   const h = Math.floor(min / 60);
   const m = min % 60;
@@ -30,14 +30,14 @@ export default function MilkingDashboard() {
   const [last,   setLast]   = useState(null);
   const [err,    setErr]    = useState("");
 
-  /* tick every minute – refresh “didn’t eat for …” timer */
+  /* refresh the “time since last feed” every minute */
   const [now, setNow] = useState(new Date());
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 60_000);
     return () => clearInterval(id);
   }, []);
 
-  /* flip to next day right after midnight */
+  /* slide to next day at midnight */
   useEffect(() => {
     const id = setInterval(() => {
       const today = startOfToday();
@@ -46,8 +46,10 @@ export default function MilkingDashboard() {
     return () => clearInterval(id);
   }, [date]);
 
-  /* recommendations once */
-  useEffect(() => { api.listRecs().then(setRecs).catch(e => setErr(e.message)); }, []);
+  /* once: load the recommendation table */
+  useEffect(() => {
+    api.listRecs().then(setRecs).catch(e => setErr(e.message));
+  }, []);
 
   /* loaders -------------------------------------------------------- */
   const reloadFeeds = (d = date) =>
@@ -69,11 +71,13 @@ export default function MilkingDashboard() {
   const handleUpdate = (id, p) => api.updateFeed(id,p).then(refresh).catch(e => setErr(e.message));
   const handleDelete = (id)    => api.deleteFeed(id)  .then(refresh).catch(e => setErr(e.message));
 
-  /* today’s recommendation */
-  const ageDays  = birthTs ? differenceInCalendarDays(date, birthTs) : null;
-  const recToday = recs.find(r => r.ageDays === ageDays)?.totalMl ?? 0;
+  /* today’s recommendation row (may be undefined if birth date not set) */
+  const ageDays   = birthTs ? differenceInCalendarDays(date, birthTs) : null;
+  const recRow    = recs.find(r => r.ageDays === ageDays) || {};
+  const recToday  = recRow.totalMl     ?? 0;
+  const recPer    = recRow.perMealMl   ?? 0;
 
-  /* time since last feed (any day) */
+  /* timer since last feed (any day) */
   const lastFeedAt = last ? new Date(last.fedAt) : null;
   const minsSince  = lastFeedAt ? differenceInMinutes(now, lastFeedAt) : null;
   const didntEat   = minsSince != null ? fmtMinutes(minsSince) : "—";
@@ -85,12 +89,16 @@ export default function MilkingDashboard() {
       {err && <p style={{ color:"#c00", padding:"0 1rem" }}>{err}</p>}
 
       <main>
-        {/* “didn’t eat for …” banner – uses latest feed overall */}
+        {/* banner – time since last + per-meal suggestion */}
         <section className="card" style={{ marginBottom:"1.5rem" }}>
           <strong>Didn’t eat for:</strong>{" "}
-          {lastFeedAt
-            ? didntEat
-            : <em>No feeds logged yet</em>}
+          {lastFeedAt ? didntEat : <em>No feeds logged yet</em>}
+          {recPer > 0 && (
+            <>
+              {" "}|{" "}
+              <strong>Suggested per feed:</strong> {recPer} ml
+            </>
+          )}
         </section>
 
         <FeedForm  onSave={handleSave} />
