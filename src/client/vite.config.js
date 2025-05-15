@@ -12,15 +12,5 @@ module.exports = defineConfig({
   build  : {
     outDir     : path.resolve(__dirname, "dist"),
     emptyOutDir: true,
-
-    /* 👇  NEW — mark the runtime-generated file as external */
-    rollupOptions: {
-      /**
-       * Treat /env.js as an external URL – Rollup/Vite will leave the
-       * <script src="/env.js"> tag untouched instead of trying to follow
-       * and bundle it.
-       */
-      external: ["/env.js"],
-    },
   },
 });

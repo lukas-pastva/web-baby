@@ -12,16 +12,17 @@ import { loadConfig, saveConfig } from "../config.js";
  */
 export default function Header({ showMeta = true }) {
   const p  = window.location.pathname;
-  const rt = window.__ENV__ || {};          // birthTs + appTitle only
 
   const {
     childName    = "",
     childSurname = "",
     mode: storedMode = null,
+    birthTs,
+    appTitle: title = "Web-Baby",
   } = loadConfig();
 
   /* ─── age calc (days) ──────────────────────────────────────────── */
-  const birthDate = rt.birthTs ? new Date(rt.birthTs) : null;
+  const birthDate = birthTs ? new Date(birthTs) : null;
   const ageText   = birthDate
     ? `${differenceInCalendarDays(startOfToday(), birthDate)} days`
     : "";
@@ -42,7 +43,7 @@ export default function Header({ showMeta = true }) {
   /* ─── UI ───────────────────────────────────────────────────────── */
   return (
     <header className="mod-header">
-      <h1>{rt.appTitle || "Web-Baby"}</h1>
+      <h1>{title}</h1>
 
       {/* centred navigation */}
       <nav className="nav-center">

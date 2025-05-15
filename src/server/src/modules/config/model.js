@@ -11,6 +11,10 @@ export const AppConfig = db.define(
     disabledTypes: { type: DataTypes.JSON,                 allowNull:false, defaultValue: [] },
     childName    : { type: DataTypes.STRING(64),           allowNull:false, defaultValue:""  },
     childSurname : { type: DataTypes.STRING(64),           allowNull:false, defaultValue:""  },
+
+    /* NEW – persisted birth timestamp + application title */
+    birthTs      : { type: DataTypes.DATE,                 allowNull:true },
+    appTitle     : { type: DataTypes.STRING(128),          allowNull:false, defaultValue:"Web-Baby" },
   },
   { timestamps:false }
 );

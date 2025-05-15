@@ -29,20 +29,6 @@ app.use(milkingRoutes);
 app.use(weightRoutes);
 app.use(configRoutes);
 
-/* /env.js for the frontend – minimal (birth timestamp & title only) */
-app.get("/env.js", (_req, res) => {
-  res.type("application/javascript");
-
-  const normBirthTs = (v) => (v && /^\d+$/.test(v) ? Number(v) : v || "");
-
-  res.send(
-    `window.__ENV__ = ${JSON.stringify({
-      birthTs : normBirthTs(process.env.BIRTH_TS),
-      appTitle: process.env.APP_TITLE || "Web-Baby",
-    })};`
-  );
-});
-
 /* static SPA */
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 app.use(express.static(path.join(__dirname, "../public")));

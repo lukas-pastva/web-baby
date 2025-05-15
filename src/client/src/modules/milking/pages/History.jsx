@@ -10,6 +10,7 @@ import Header        from "../../../components/Header.jsx";
 import api           from "../api.js";
 import DayCard       from "../components/DayCard.jsx";
 import AllDaysChart  from "../components/AllDaysChart.jsx";
+import { loadConfig } from "../../../config.js";
 
 const FEED_TYPES    = [
   "BREAST_DIRECT",
@@ -19,13 +20,11 @@ const FEED_TYPES    = [
 ];
 const DAYS_PER_PAGE = 50;
 
-const rt       = window.__ENV__ || {};
-const birthTs  = rt.birthTs ? new Date(rt.birthTs) : null;
-
-const birthDay = birthTs ? startOfDay(birthTs) : startOfDay(new Date());
-const today    = startOfDay(new Date());
-
 export default function MilkingHistory() {
+  const { birthTs: birthTsRaw } = loadConfig();
+  const birthDay = birthTsRaw ? startOfDay(new Date(birthTsRaw)) : startOfDay(new Date());
+  const today    = startOfDay(new Date());
+
   const [page,         setPage]  = useState(0);
   const [recs,         setRecs]  = useState([]);
   const [feedsByDay,   setData]  = useState({});
@@ -63,7 +62,7 @@ export default function MilkingHistory() {
       ]));
       setLoading(false);
     })();
-  }, [page, done]);
+  }, [page, done, birthDay, today]);
 
   /* build arrays for multi-day chart */
   const ordered = Object.values(feedsByDay)

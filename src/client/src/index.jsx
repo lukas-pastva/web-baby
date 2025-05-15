@@ -4,25 +4,26 @@ import { createRoot } from "react-dom/client";
 import AppRoutes      from "./routes.jsx";
 import {
   initConfig,
+  loadConfig,
   effectiveTheme,
   effectiveMode,
 } from "./config.js";
 
 /* bootstrap – pull config, apply theme/mode, then mount SPA */
 (async () => {
-  const env = window.__ENV__ || {};
-
   /* pulls (or creates) the single config row */
-  await initConfig(env);
+  await initConfig();
+
+  const cfg = loadConfig();
 
   /* apply theme + light/dark mode */
   document.documentElement.setAttribute(
     "data-theme",
-    effectiveTheme(env.theme || "boy")
+    effectiveTheme(cfg.theme || "boy")
   );
   document.documentElement.setAttribute(
     "data-mode",
-    effectiveMode("light")
+    effectiveMode(cfg.mode || "light")
   );
 
   /* mount React app */

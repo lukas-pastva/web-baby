@@ -12,6 +12,8 @@ export async function syncConfig() {
       disabledTypes: [],
       childName    : "",
       childSurname : "",
+      birthTs      : process.env.BIRTH_TS || null,
+      appTitle     : process.env.APP_TITLE || "Web-Baby",
     });
   }
 }

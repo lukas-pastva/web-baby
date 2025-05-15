@@ -15,12 +15,15 @@ const DEFAULT_CFG = {
   disabledTypes: [],
   childName    : "",
   childSurname : "",
+  /* NEW fields */
+  birthTs      : "",
+  appTitle     : "Web-Baby",
 };
 
 let CACHE = { ...DEFAULT_CFG };
 
 /* first thing called from index.jsx */
-export async function initConfig(env = {}) {
+export async function initConfig() {
   try {
     const r = await fetch("/api/config");
     CACHE = r.ok
@@ -33,14 +36,21 @@ export async function initConfig(env = {}) {
 
 export function loadConfig() { return CACHE; }
 
-export function effectiveTheme(envTheme = "boy") {
-  return CACHE.theme ?? envTheme;
+/* helpers */
+export function effectiveTheme(fallback = "boy") {
+  return CACHE.theme ?? fallback;
 }
-export function effectiveMode(envMode = "light") {
-  return CACHE.mode ?? envMode;
+export function effectiveMode(fallback = "light") {
+  return CACHE.mode ?? fallback;
 }
 export function isTypeEnabled(t) {
   return !CACHE.disabledTypes.includes(t);
+}
+export function birthTimestamp() {
+  return CACHE.birthTs || null;
+}
+export function appTitle() {
+  return CACHE.appTitle || "Web-Baby";
 }
 
 /* save to DB and cache locally */

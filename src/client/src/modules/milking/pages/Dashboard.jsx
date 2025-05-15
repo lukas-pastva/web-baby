@@ -11,9 +11,7 @@ import api           from "../api.js";
 import FeedForm      from "../components/FeedForm.jsx";
 import FeedTable     from "../components/FeedTable.jsx";
 import SummaryChart  from "../components/SummaryChart.jsx";
-
-const rt      = window.__ENV__ || {};
-const birthTs = rt.birthTs ? new Date(rt.birthTs) : null;
+import { loadConfig } from "../../../config.js";
 
 /* helper: “1 h 23 m” / “45 m” */
 function fmtMinutes(min) {
@@ -23,10 +21,13 @@ function fmtMinutes(min) {
 }
 
 export default function MilkingDashboard() {
+  const { birthTs: birthTsRaw } = loadConfig();
+  const birthTs = birthTsRaw ? new Date(birthTsRaw) : null;
+
   const [date,   setDate]   = useState(startOfToday());
   const [recs,   setRecs]   = useState([]);
   const [feeds,  setFeeds]  = useState([]);
-  const [last,   setLast]   = useState(null);       // ← NEW
+  const [last,   setLast]   = useState(null);
   const [err,    setErr]    = useState("");
 
   /* tick every minute – refresh “didn’t eat for …” timer */

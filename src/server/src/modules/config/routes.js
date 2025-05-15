@@ -24,6 +24,8 @@ r.put("/api/config", async (req, res) => {
     disabledTypes,
     childName,
     childSurname,
+    birthTs,
+    appTitle,
   } = req.body;
 
   await row.update({
@@ -32,6 +34,8 @@ r.put("/api/config", async (req, res) => {
     disabledTypes: Array.isArray(disabledTypes)     ? disabledTypes : row.disabledTypes,
     childName    : typeof childName === "string"    ? childName     : row.childName,
     childSurname : typeof childSurname === "string" ? childSurname  : row.childSurname,
+    birthTs      : birthTs || null,
+    appTitle     : typeof appTitle === "string" && appTitle.trim() ? appTitle.trim() : row.appTitle,
   });
 
   res.json(row);
