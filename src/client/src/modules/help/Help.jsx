@@ -4,7 +4,7 @@ import Header from "../../components/Header.jsx";
 export default function HelpPage() {
   return (
     <>
-      <Header showMeta={false} />
+      <Header />
 
       <main>
         <section className="card" style={{ maxWidth: "850px" }}>

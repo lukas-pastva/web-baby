@@ -63,8 +63,7 @@ export default function ConfigPage() {
 
   return (
     <>
-      {/* hide meta so the nav sits perfectly centred */}
-      <Header showMeta={false} />
+      <Header />
 
       <main>
         <section className="card config-wrap">
