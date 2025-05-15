@@ -1,5 +1,5 @@
 /* ────────────────────────────────────────────────────────────────────
- *  Central application configuration – persisted on the server
+ * Central application configuration – persisted on the server
  * ──────────────────────────────────────────────────────────────────── */
 
 export const ALL_TYPES = [
@@ -15,20 +15,19 @@ const DEFAULT_CFG = {
   disabledTypes: [],
   childName    : "",
   childSurname : "",
-  /* NEW fields */
   birthTs      : "",
   appTitle     : "Web-Baby",
+  birthWeightGrams: null,
 };
 
 let CACHE = { ...DEFAULT_CFG };
 
-/* first thing called from index.jsx */
+/* pulls (or creates) the single config row */
 export async function initConfig() {
   try {
     const r = await fetch("/api/config");
-    CACHE = r.ok
-      ? { ...DEFAULT_CFG, ...(await r.json()) }
-      : { ...DEFAULT_CFG };
+    CACHE = r.ok ? { ...DEFAULT_CFG, ...(await r.json()) }
+                 : { ...DEFAULT_CFG };
   } catch {
     CACHE = { ...DEFAULT_CFG };
   }
@@ -37,21 +36,14 @@ export async function initConfig() {
 export function loadConfig() { return CACHE; }
 
 /* helpers */
-export function effectiveTheme(fallback = "boy") {
-  return CACHE.theme ?? fallback;
+export function effectiveTheme(fallback="boy") { return CACHE.theme ?? fallback; }
+export function effectiveMode (fallback="light") { return CACHE.mode  ?? fallback; }
+export function isTypeEnabled(t) { return !CACHE.disabledTypes.includes(t); }
+export function birthTimestamp() { return CACHE.birthTs || null; }
+export function birthWeight() {
+  return Number.isFinite(CACHE.birthWeightGrams) ? CACHE.birthWeightGrams : null;
 }
-export function effectiveMode(fallback = "light") {
-  return CACHE.mode ?? fallback;
-}
-export function isTypeEnabled(t) {
-  return !CACHE.disabledTypes.includes(t);
-}
-export function birthTimestamp() {
-  return CACHE.birthTs || null;
-}
-export function appTitle() {
-  return CACHE.appTitle || "Web-Baby";
-}
+export function appTitle() { return CACHE.appTitle || "Web-Baby"; }
 
 /* save to DB and cache locally */
 export async function saveConfig(partial) {

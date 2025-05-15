@@ -6,36 +6,37 @@ const r = Router();
 /* ensure the single config row exists */
 async function getRow() {
   let row = await AppConfig.findByPk(1);
-  if (!row) row = await AppConfig.create({ id: 1 });   // defaults
+  if (!row) row = await AppConfig.create({ id:1 });
   return row;
 }
 
-/* GET  → current config */
+/* GET → current config */
 r.get("/api/config", async (_req, res) => {
   res.json(await getRow());
 });
 
-/* PUT  → update config */
+/* PUT → update config */
 r.put("/api/config", async (req, res) => {
   const row = await getRow();
   const {
-    theme,
-    mode,
-    disabledTypes,
-    childName,
-    childSurname,
-    birthTs,
-    appTitle,
+    theme, mode, disabledTypes,
+    childName, childSurname,
+    birthTs, appTitle,
+    birthWeightGrams,            // NEW
   } = req.body;
 
   await row.update({
-    theme        : ["boy","girl"].includes(theme)   ? theme         : row.theme,
-    mode         : ["light","dark"].includes(mode)  ? mode          : row.mode,
-    disabledTypes: Array.isArray(disabledTypes)     ? disabledTypes : row.disabledTypes,
-    childName    : typeof childName === "string"    ? childName     : row.childName,
-    childSurname : typeof childSurname === "string" ? childSurname  : row.childSurname,
+    theme        : ["boy","girl"].includes(theme)  ? theme  : row.theme,
+    mode         : ["light","dark"].includes(mode) ? mode   : row.mode,
+    disabledTypes: Array.isArray(disabledTypes)    ? disabledTypes : row.disabledTypes,
+    childName    : typeof childName === "string"   ? childName    : row.childName,
+    childSurname : typeof childSurname==="string"  ? childSurname : row.childSurname,
     birthTs      : birthTs || null,
-    appTitle     : typeof appTitle === "string" && appTitle.trim() ? appTitle.trim() : row.appTitle,
+    appTitle     : typeof appTitle==="string" && appTitle.trim()
+                    ? appTitle.trim() : row.appTitle,
+    birthWeightGrams: Number.isFinite(birthWeightGrams)
+                      ? Math.round(birthWeightGrams)
+                      : row.birthWeightGrams,
   });
 
   res.json(row);
