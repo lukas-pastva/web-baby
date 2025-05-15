@@ -147,7 +147,10 @@ tbody tr:nth-child(odd){background:var(--row-alt)}
 @keyframes fadeout{0%,90%{opacity:1}100%{opacity:0}}
 
 /* ─────────────────────────── Config page */
-.config-wrap{max-width:500px;margin:0 auto}
+.config-wrap{
+  max-width:800px;          /* was 500px */
+  margin:0;                 /* flush-left */
+}
 .config-types{list-style:none;padding:0;text-align:center}
 .config-types li{display:inline-block;margin:0 .75rem .4rem}
 
@@ -155,4 +158,5 @@ tbody tr:nth-child(odd){background:var(--row-alt)}
 @media(max-width:600px){
   html{font-size:92%}
   header.mod-header h1{font-size:1.25rem}
+  .config-wrap{max-width:100%;}          /* still fluid on phones */
 }
