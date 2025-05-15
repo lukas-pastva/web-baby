@@ -30,14 +30,14 @@ export default function MilkingDashboard() {
   const [last,   setLast]   = useState(null);
   const [err,    setErr]    = useState("");
 
-  /* refresh the “time since last feed” every minute */
+  /* refresh the banner every minute */
   const [now, setNow] = useState(new Date());
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 60_000);
     return () => clearInterval(id);
   }, []);
 
-  /* slide to next day at midnight */
+  /* flip to next day right after midnight */
   useEffect(() => {
     const id = setInterval(() => {
       const today = startOfToday();
@@ -77,10 +77,23 @@ export default function MilkingDashboard() {
   const recToday  = recRow.totalMl     ?? 0;
   const recPer    = recRow.perMealMl   ?? 0;
 
-  /* timer since last feed (any day) */
+  /* time since last feed (any date) */
   const lastFeedAt = last ? new Date(last.fedAt) : null;
   const minsSince  = lastFeedAt ? differenceInMinutes(now, lastFeedAt) : null;
   const didntEat   = minsSince != null ? fmtMinutes(minsSince) : "—";
+
+  /* ------------------------------------------------------------------
+   *  Continuous minute-by-minute target so far today
+   * ---------------------------------------------------------------- */
+  let targetSoFar = null;
+  if (recToday > 0) {
+    const minutesIntoDay = now.getHours() * 60 + now.getMinutes();      // 0-1439
+    const fracDay        = minutesIntoDay / 1440;                       // 0-1
+    targetSoFar          = Math.round(fracDay * recToday);
+  }
+
+  /* actual ml consumed so far today */
+  const actualSoFar = feeds.reduce((s, f) => s + f.amountMl, 0);
 
   return (
     <>
@@ -89,22 +102,38 @@ export default function MilkingDashboard() {
       {err && <p style={{ color:"#c00", padding:"0 1rem" }}>{err}</p>}
 
       <main>
-        {/* banner – time since last + per-meal suggestion */}
+        {/* banner – time since last + per-meal + target so far */}
         <section className="card" style={{ marginBottom:"1.5rem" }}>
           <strong>Didn’t eat for:</strong>{" "}
           {lastFeedAt ? didntEat : <em>No feeds logged yet</em>}
+
           {recPer > 0 && (
             <>
               {" "}|{" "}
               <strong>Suggested per feed:</strong> {recPer} ml
             </>
           )}
+
+          {targetSoFar != null && (
+            <>
+              {" "}|{" "}
+              <strong>Should have eaten by now:</strong>{" "}
+              {targetSoFar} ml&nbsp;
+              <small style={{ opacity:0.7 }}>
+                (logged&nbsp;{actualSoFar} ml)
+              </small>
+            </>
+          )}
         </section>
 
-        <FeedForm  onSave={handleSave} />
-        <FeedTable rows={feeds}
-                   onUpdate={handleUpdate}
-                   onDelete={handleDelete} />
+        <FeedForm onSave={handleSave} />
+
+        <FeedTable
+          rows={feeds}
+          onUpdate={handleUpdate}
+          onDelete={handleDelete}
+        />
+
         <SummaryChart feeds={feeds} recommended={recToday} />
       </main>
     </>
