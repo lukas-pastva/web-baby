@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import {
   startOfToday,
+  subDays,
   format,
   differenceInCalendarDays,
   differenceInMinutes,
@@ -27,6 +28,7 @@ export default function MilkingDashboard() {
   const [date,   setDate]   = useState(startOfToday());
   const [recs,   setRecs]   = useState([]);
   const [feeds,  setFeeds]  = useState([]);
+  const [feedsYesterday, setFeedsYesterday] = useState([]);
   const [last,   setLast]   = useState(null);
   const [err,    setErr]    = useState("");
 
@@ -57,15 +59,27 @@ export default function MilkingDashboard() {
        .then(setFeeds)
        .catch(e => setErr(e.message));
 
+  const reloadYesterday = (d = date) => {
+    const y = format(subDays(d, 1), "yyyy-MM-dd");
+    return api.listFeeds(y)
+      .then(setFeedsYesterday)
+      .catch(e => setErr(e.message));
+  };
+
   const reloadLast = () =>
     api.latestFeed()
        .then(setLast)
        .catch(e => setErr(e.message));
 
-  useEffect(() => { reloadFeeds(); reloadLast(); }, [date]);
+  /* (re)load data when the displayed “today” changes */
+  useEffect(() => {
+    reloadFeeds();
+    reloadYesterday();
+    reloadLast();
+  }, [date]);
 
   /* CRUD shortcuts */
-  const refresh = () => { reloadFeeds(); reloadLast(); };
+  const refresh = () => { reloadFeeds(); reloadYesterday(); reloadLast(); };
 
   const handleSave   = (p)     => api.insertFeed(p)   .then(refresh).catch(e => setErr(e.message));
   const handleUpdate = (id, p) => api.updateFeed(id,p).then(refresh).catch(e => setErr(e.message));
@@ -82,18 +96,23 @@ export default function MilkingDashboard() {
   const minsSince  = lastFeedAt ? differenceInMinutes(now, lastFeedAt) : null;
   const didntEat   = minsSince != null ? fmtMinutes(minsSince) : "—";
 
-  /* ------------------------------------------------------------------
-   *  Continuous minute-by-minute target so far today
-   * ---------------------------------------------------------------- */
-  let targetSoFar = null;
-  if (recToday > 0) {
-    const minutesIntoDay = now.getHours() * 60 + now.getMinutes();      // 0-1439
-    const fracDay        = minutesIntoDay / 1440;                       // 0-1
-    targetSoFar          = Math.round(fracDay * recToday);
-  }
+  /* continuous target so far today */
+  const minutesIntoDay = now.getHours() * 60 + now.getMinutes();
+  const targetSoFar =
+    recToday > 0 ? Math.round((minutesIntoDay / 1440) * recToday) : null;
 
   /* actual ml consumed so far today */
   const actualSoFar = feeds.reduce((s, f) => s + f.amountMl, 0);
+
+  /* ml eaten by the same clock-time yesterday */
+  let yesterdaySoFar = null;
+  if (feedsYesterday.length > 0) {
+    yesterdaySoFar = feedsYesterday.reduce((s, f) => {
+      const ts = new Date(f.fedAt);
+      const m  = ts.getHours() * 60 + ts.getMinutes();
+      return m <= minutesIntoDay ? s + f.amountMl : s;
+    }, 0);
+  }
 
   return (
     <>
@@ -102,7 +121,7 @@ export default function MilkingDashboard() {
       {err && <p style={{ color:"#c00", padding:"0 1rem" }}>{err}</p>}
 
       <main>
-        {/* banner – time since last + per-meal + target so far */}
+        {/* banner – timer + suggestions + targets */}
         <section className="card" style={{ marginBottom:"1.5rem" }}>
           <strong>Didn’t eat for:</strong>{" "}
           {lastFeedAt ? didntEat : <em>No feeds logged yet</em>}
@@ -122,6 +141,13 @@ export default function MilkingDashboard() {
               <small style={{ opacity:0.7 }}>
                 (logged&nbsp;{actualSoFar} ml)
               </small>
+            </>
+          )}
+
+          {yesterdaySoFar != null && (
+            <>
+              {" "}|{" "}
+              <strong>Yesterday by now:</strong> {yesterdaySoFar} ml
             </>
           )}
         </section>
