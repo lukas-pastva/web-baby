@@ -25,7 +25,10 @@ export default function FeedForm({ onSave }) {
   const enabledTypes  = TYPES_IN_ORDER.filter(isTypeEnabled);
   const fallbackType  = enabledTypes[0] || "BREAST_DIRECT";
 
-  const [amount, setAmt] = useState("");
+  /* dropdown ml options 10…100 every 5 */
+  const ML_OPTIONS = Array.from({ length: 19 }, (_, i) => 10 + i * 5); // [10,15,…,100]
+
+  const [amount, setAmt] = useState("30");
   const [type,   setType] = useState(fallbackType);
   const [date,   setDate] = useState(format(now, "yyyy-MM-dd"));
   const [time,   setTime] = useState(format(now, "HH:mm"));
@@ -48,7 +51,7 @@ export default function FeedForm({ onSave }) {
     setTimeout(() => setSaved(false), 2000);
 
     /* quick reset */
-    setAmt("");
+    setAmt("30");
     const n = new Date();
     setDate(format(n, "yyyy-MM-dd"));
     setTime(format(n, "HH:mm"));
@@ -59,15 +62,12 @@ export default function FeedForm({ onSave }) {
       <h3>Add feed</h3>
 
       <div style={{ display:"flex", gap:"0.75rem", alignItems:"center", flexWrap:"wrap" }}>
-        <input
-          type="number"
-          placeholder="ml"
-          value={amount}
-          onChange={e => setAmt(e.target.value)}
-          style={{ width: 100 }}
-          min={0}
-          required
-        />
+        {/* dropdown instead of free-text number */}
+        <select value={amount} onChange={e => setAmt(e.target.value)}>
+          {ML_OPTIONS.map(v => (
+            <option key={v} value={v}>{v} ml</option>
+          ))}
+        </select>
 
         <select value={type} onChange={e => setType(e.target.value)}>
           {enabledTypes.map(t => (
