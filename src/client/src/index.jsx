@@ -6,24 +6,30 @@ import {
   initConfig,
   loadConfig,
   effectiveTheme,
-  effectiveMode,               // ← keep only these four
+  effectiveMode,
 } from "./config.js";
+
+/* pick light/dark for “auto” */
+function realMode(m = "auto") {
+  if (m !== "auto") return m;
+  const h = new Date().getHours();
+  return h >= 7 && h < 19 ? "light" : "dark";
+}
 
 /* bootstrap – pull config, apply theme/mode, then mount SPA */
 (async () => {
-  /* pulls (or creates) the single config row */
   await initConfig();
 
   const cfg = loadConfig();
 
-  /* apply theme + light/dark mode */
+  /* theme + resolved colour-scheme */
   document.documentElement.setAttribute(
     "data-theme",
     effectiveTheme(cfg.theme || "boy"),
   );
   document.documentElement.setAttribute(
     "data-mode",
-    effectiveMode(cfg.mode || "light"),
+    realMode(effectiveMode("auto")),
   );
 
   /* mount React app */
