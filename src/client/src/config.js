@@ -1,54 +1,46 @@
 /* ────────────────────────────────────────────────────────────────────
- *  Central application configuration – persisted on the server
+ * Central application configuration – persisted on the server
  * ──────────────────────────────────────────────────────────────────── */
 
-export const ALL_TYPES = [
-  "BREAST_DIRECT",
-  "BREAST_BOTTLE",
-  "FORMULA_PUMP",
-  "FORMULA_BOTTLE",
-];
+import { ORDER as ALL_TYPES } from "./feedTypes.js";   /* SINGLE SOURCE */
 
-/* defaults used when DB row doesn’t exist or request fails */
 const DEFAULT_CFG = {
-  theme            : "boy",       // teal vs pink accent
-  mode             : "auto",      // light | dark | auto (day-light)
-  disabledTypes    : [],
-  childName        : "",
-  childSurname     : "",
-  birthTs          : "",          // ISO timestamp or ""
-  appTitle         : "Web-Baby",
-  birthWeightGrams : null,        // integer or null
+  theme        : "boy",
+  mode         : "light",
+  disabledTypes: [],
+  childName    : "",
+  childSurname : "",
+  birthTs      : "",
+  appTitle     : "Web-Baby",
+  birthWeightGrams: null,
 };
 
 let CACHE = { ...DEFAULT_CFG };
 
-/* first thing called from index.jsx */
+/* pulls (or creates) the single config row */
 export async function initConfig() {
   try {
     const r = await fetch("/api/config");
-    CACHE = r.ok
-      ? { ...DEFAULT_CFG, ...(await r.json()) }
-      : { ...DEFAULT_CFG };
+    CACHE = r.ok ? { ...DEFAULT_CFG, ...(await r.json()) }
+                 : { ...DEFAULT_CFG };
   } catch {
     CACHE = { ...DEFAULT_CFG };
   }
 }
 
-/* local getter */
 export function loadConfig() { return CACHE; }
 
-/* simple helpers */
-export function effectiveTheme(fallback = "boy")   { return CACHE.theme ?? fallback; }
-export function storedMode()                       { return CACHE.mode  ?? "auto"; }
-export function isTypeEnabled(t)                   { return !CACHE.disabledTypes.includes(t); }
-export function birthTimestamp()                   { return CACHE.birthTs || null; }
+/* helpers */
+export function effectiveTheme(fallback="boy") { return CACHE.theme ?? fallback; }
+export function effectiveMode (fallback="light") { return CACHE.mode  ?? fallback; }
+export function isTypeEnabled(t) { return !CACHE.disabledTypes.includes(t); }
+export function birthTimestamp() { return CACHE.birthTs || null; }
 export function birthWeight() {
   return Number.isFinite(CACHE.birthWeightGrams) ? CACHE.birthWeightGrams : null;
 }
-export function appTitle()                         { return CACHE.appTitle || "Web-Baby"; }
+export function appTitle() { return CACHE.appTitle || "Web-Baby"; }
 
-/* save to DB + update local cache */
+/* save to DB and cache locally */
 export async function saveConfig(partial) {
   CACHE = { ...CACHE, ...partial };
   await fetch("/api/config", {
