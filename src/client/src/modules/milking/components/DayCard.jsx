@@ -4,17 +4,9 @@ import FeedTable     from "./FeedTable.jsx";
 import SummaryChart  from "./SummaryChart.jsx";
 
 /**
- * Collapsible “day card” that now shows:
- *   • the feed table (editable)
- *   • the per-day intake chart with recommended line
+ * Collapsible “day card”.
  *
- * Props
- * ─────
- * • date         – JS Date object for the day
- * • feeds        – array of feed rows [{ fedAt, amountMl, feedingType, … }]
- * • recommended  – number (ml) for that day’s suggested intake
- * • onUpdate     – (id, payload) ⇒ Promise  (optional)
- * • onDelete     – (id) ⇒ Promise           (optional)
+ * • SummaryChart **now comes first** so the visual sits above the table.
  */
 export default function DayCard({
   date,
@@ -48,14 +40,15 @@ export default function DayCard({
 
       {open && (
         <>
+          {/* chart FIRST */}
+          <SummaryChart feeds={feeds} recommended={recommended} />
+
+          {/* editable table under the visual */}
           <FeedTable
             rows={feeds}
             onUpdate={onUpdate}
             onDelete={onDelete}
           />
-
-          {/* per-day stacked/step chart (same look as Today dashboard) */}
-          <SummaryChart feeds={feeds} recommended={recommended} />
         </>
       )}
     </section>
