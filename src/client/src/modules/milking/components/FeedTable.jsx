@@ -1,23 +1,9 @@
 import React, { useState } from "react";
 import { format, formatISO } from "date-fns";
-
-/* emoji icons & friendly labels for quick scanning */
-const ICONS = {
-  BREAST_DIRECT : "🤱",
-  BREAST_BOTTLE : "🤱🍼",
-  FORMULA_PUMP  : "🍼⚙️",
-  FORMULA_BOTTLE: "🍼",
-};
-const LABELS = {
-  BREAST_DIRECT : "Breast – direct",
-  BREAST_BOTTLE : "Breast – bottle",
-  FORMULA_PUMP  : "Formula – pump / tube",
-  FORMULA_BOTTLE: "Formula – bottle",
-};
+import { ICONS, LABELS } from "../../../feedTypes.js";
 
 /**
- * Sortable, editable feed table **with a footer row that shows
- * the day-total in millilitres.**
+ * Sortable, editable feed table with footer total.
  */
 export default function FeedTable({ rows, onUpdate, onDelete }) {
   const [sortKey, setKey]     = useState("fedAt");
@@ -25,12 +11,12 @@ export default function FeedTable({ rows, onUpdate, onDelete }) {
   const [editingId, setEdit]  = useState(null);
   const [formVals, setForm]   = useState({
     amount   : "",
-    type     : "BREAST_DIRECT",
+    type     : "FORMULA_BOTTLE",
     datePart : "",
     timePart : "",
   });
 
-  /* ── helpers ──────────────────────────────────────────────────── */
+  /* helpers */
   function sort(k) {
     setAsc(k === sortKey ? !asc : true);
     setKey(k);
@@ -44,7 +30,7 @@ export default function FeedTable({ rows, onUpdate, onDelete }) {
   const totalMl = rows.reduce((s, r) => s + r.amountMl, 0);
   const hasActions = onUpdate || onDelete;
 
-  /* ── edit actions ─────────────────────────────────────────────── */
+  /* edit actions */
   function beginEdit(feed) {
     const dt = new Date(feed.fedAt);
     setForm({
@@ -72,7 +58,7 @@ export default function FeedTable({ rows, onUpdate, onDelete }) {
     if (onDelete && confirm("Delete this feed entry?")) await onDelete(id);
   }
 
-  /* ── UI ────────────────────────────────────────────────────────── */
+  /* UI */
   return (
     <>
       <h3>Feeds for the day</h3>
@@ -109,16 +95,12 @@ export default function FeedTable({ rows, onUpdate, onDelete }) {
                         >Edit</button>
                       )}
                       {onDelete && (
-                        <button
-                          className="btn-light"
-                          onClick={() => del(f.id)}
-                        >×</button>
+                        <button className="btn-light" onClick={() => del(f.id)}>×</button>
                       )}
                     </td>
                   )}
                 </tr>
 
-                {/* inline editor */}
                 {editingId === f.id && (
                   <tr>
                     <td colSpan={hasActions ? 4 : 3}>
@@ -172,7 +154,6 @@ export default function FeedTable({ rows, onUpdate, onDelete }) {
             ))}
           </tbody>
 
-          {/* day-total row */}
           <tfoot>
             <tr style={{ background:"#f0f3f7", fontWeight:600 }}>
               <td>Total</td>
