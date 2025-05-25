@@ -2,11 +2,11 @@
  * Central application configuration – persisted on the server
  * ──────────────────────────────────────────────────────────────────── */
 
-import { ORDER as ALL_TYPES } from "./feedTypes.js";   /* SINGLE SOURCE */
+import { ORDER as ALL_TYPES } from "./feedTypes.js";   // single source
 
 const DEFAULT_CFG = {
   theme        : "boy",
-  mode         : "light",
+  mode         : "auto",          // default scheme is now “auto”
   disabledTypes: [],
   childName    : "",
   childSurname : "",
@@ -30,9 +30,12 @@ export async function initConfig() {
 
 export function loadConfig() { return CACHE; }
 
-/* helpers */
+/* helpers ---------------------------------------------------------- */
 export function effectiveTheme(fallback="boy") { return CACHE.theme ?? fallback; }
 export function effectiveMode (fallback="light") { return CACHE.mode  ?? fallback; }
+export function storedMode() {                   // ← NEW: used by Header.jsx
+  return CACHE.mode ?? "auto";
+}
 export function isTypeEnabled(t) { return !CACHE.disabledTypes.includes(t); }
 export function birthTimestamp() { return CACHE.birthTs || null; }
 export function birthWeight() {
