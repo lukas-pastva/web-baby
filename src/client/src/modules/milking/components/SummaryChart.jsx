@@ -4,14 +4,14 @@ import {
   Chart as ChartJS,
   CategoryScale,   // kept for internal defaults
   LinearScale,
-  TimeScale,      // NEW – true time axis
+  TimeScale,
   BarElement,
   PointElement,
   LineElement,
   Tooltip,
   Legend,
 } from "chart.js";
-import "chartjs-adapter-date-fns";           // 👈 required adapter
+import "chartjs-adapter-date-fns";
 import { startOfDay, endOfDay } from "date-fns";
 import { accentColor } from "../../../theme.js";
 
@@ -34,16 +34,14 @@ export default function SummaryChart({ feeds = [], recommended = 0 }) {
    *  Build datasets – bars per feed + cumulative line
    * ---------------------------------------------------------------- */
   const {
-    barDataByType,   // { FEED_TYPE: [ {x,timestamp, y,amount}, … ] }
-    cumulativeLine,  // [ {x, y}, … ]
+    barDataByType,
+    cumulativeLine,
     startTs, endTs,
   } = useMemo(() => {
-    /* if no feeds → today’s bounds */
     const baseDate = feeds.length ? new Date(feeds[0].fedAt) : new Date();
     const dayStart = startOfDay(baseDate);
     const dayEnd   = endOfDay(baseDate);
 
-    /* initialise */
     const byType = Object.fromEntries(
       Object.keys(TYPE_META).map(k => [k, []])
     );
@@ -51,7 +49,7 @@ export default function SummaryChart({ feeds = [], recommended = 0 }) {
     let running = 0;
 
     [...feeds]
-      .sort((a, b) => new Date(a.fedAt) - new Date(b.fedAt))   // chronological
+      .sort((a, b) => new Date(a.fedAt) - new Date(b.fedAt))
       .forEach(({ fedAt, feedingType, amountMl }) => {
         const ts = new Date(fedAt);
         byType[feedingType].push({ x: ts, y: amountMl });
@@ -59,10 +57,7 @@ export default function SummaryChart({ feeds = [], recommended = 0 }) {
         cumLine.push({ x: ts, y: running });
       });
 
-    /* ensure at least one point so line renders */
-    if (cumLine.length === 0) {
-      cumLine.push({ x: dayStart, y: 0 });
-    }
+    if (cumLine.length === 0) cumLine.push({ x: dayStart, y: 0 });
 
     return { barDataByType: byType, cumulativeLine: cumLine,
              startTs: dayStart, endTs: dayEnd };
@@ -76,14 +71,13 @@ export default function SummaryChart({ feeds = [], recommended = 0 }) {
     label          : meta.lbl,
     data           : barDataByType[code],
     backgroundColor: meta.c,
-    // keep bars thin so individual feeds are visible
     barThickness   : 8,
     borderSkipped  : false,
-    yAxisID        : "y",
-    order          : 2,            // drawn under the line
+    yAxisID        : "y",          // ← unified axis
+    order          : 2,
   }));
 
-  /* ── cumulative & recommended lines ─────────────────────────────── */
+  /* ── cumulative & recommended lines – now on the SAME axis ─────── */
   const datasets = [
     ...barSets,
     {
@@ -93,9 +87,9 @@ export default function SummaryChart({ feeds = [], recommended = 0 }) {
       borderColor    : accent,
       backgroundColor: accent,
       tension        : 0.25,
-      stepped        : true,       // clearer “step-up” look
+      stepped        : true,
       pointRadius    : 3,
-      yAxisID        : "lin",
+      yAxisID        : "y",        // ← unified axis
       order          : 1,
     },
     {
@@ -110,7 +104,7 @@ export default function SummaryChart({ feeds = [], recommended = 0 }) {
       pointRadius : 0,
       tension     : 0,
       stepped     : true,
-      yAxisID     : "lin",
+      yAxisID     : "y",           // ← unified axis
       order       : 0,
     },
   ];
@@ -122,12 +116,12 @@ export default function SummaryChart({ feeds = [], recommended = 0 }) {
     interaction        : { mode: "index", intersect: false },
     plugins            : { legend: { position: "top" } },
     scales             : {
-      /* y – stacked bars */
-      y  : { beginAtZero: true, stacked: true, title: { display: true, text: "ml" } },
-      /* lin – hidden, for the two lines */
-      lin: { display: false, beginAtZero: true },
-      /* x – true time axis covering the whole day */
-      x  : {
+      y: {
+        beginAtZero: true,
+        stacked    : true,
+        title      : { display: true, text: "ml" },
+      },
+      x: {
         type : "time",
         time : { unit: "hour", displayFormats: { hour: "HH:mm" } },
         min  : startTs,
@@ -137,11 +131,11 @@ export default function SummaryChart({ feeds = [], recommended = 0 }) {
     },
   };
 
+  /* ── render ─────────────────────────────────────────────────────── */
   return (
     <>
       <h3>Intake over the day</h3>
       <div style={{ height: 320 }}>
-        {/* “labels” array not needed when using a time axis */}
         <Bar data={{ datasets }} options={options} />
       </div>
     </>
