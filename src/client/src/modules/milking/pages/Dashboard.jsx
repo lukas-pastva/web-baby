@@ -24,13 +24,13 @@ export default function MilkingDashboard() {
   const { birthTs: birthTsRaw } = loadConfig();
   const birthTs = birthTsRaw ? new Date(birthTsRaw) : null;
 
-  const [date,   setDate]   = useState(startOfToday());
-  const [recs,   setRecs]   = useState([]);
-  const [feeds,  setFeeds]  = useState([]);
-  const [last,   setLast]   = useState(null);
-  const [err,    setErr]    = useState("");
+  const [date,  setDate ] = useState(startOfToday());
+  const [recs,  setRecs ] = useState([]);
+  const [feeds, setFeeds] = useState([]);
+  const [last,  setLast ] = useState(null);
+  const [err,   setErr  ] = useState("");
 
-  /* refresh the banner every minute */
+  /* tick every minute */
   const [now, setNow] = useState(new Date());
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 60_000);
@@ -46,7 +46,7 @@ export default function MilkingDashboard() {
     return () => clearInterval(id);
   }, [date]);
 
-  /* once: load the recommendation table */
+  /* recommendations once */
   useEffect(() => {
     api.listRecs().then(setRecs).catch(e => setErr(e.message));
   }, []);
@@ -65,35 +65,32 @@ export default function MilkingDashboard() {
   useEffect(() => { reloadFeeds(); reloadLast(); }, [date]);
 
   /* CRUD shortcuts */
-  const refresh = () => { reloadFeeds(); reloadLast(); };
-
+  const refresh      = ()      => { reloadFeeds(); reloadLast(); };
   const handleSave   = (p)     => api.insertFeed(p)   .then(refresh).catch(e => setErr(e.message));
-  const handleUpdate = (id, p) => api.updateFeed(id,p).then(refresh).catch(e => setErr(e.message));
+  const handleUpdate = (id,p)  => api.updateFeed(id,p).then(refresh).catch(e => setErr(e.message));
   const handleDelete = (id)    => api.deleteFeed(id)  .then(refresh).catch(e => setErr(e.message));
 
-  /* today’s recommendation row (may be undefined if birth date not set) */
-  const ageDays   = birthTs ? differenceInCalendarDays(date, birthTs) : null;
-  const recRow    = recs.find(r => r.ageDays === ageDays) || {};
-  const recToday  = recRow.totalMl     ?? 0;
-  const recPer    = recRow.perMealMl   ?? 0;
+  /* today’s recommendation row */
+  const ageDays  = birthTs ? differenceInCalendarDays(date, birthTs) : null;
+  const recRow   = recs.find(r => r.ageDays === ageDays) || {};
+  const recToday = recRow.totalMl   ?? 0;
+  const recPer   = recRow.perMealMl ?? 0;
 
-  /* time since last feed (any date) */
+  /* time since last feed */
   const lastFeedAt = last ? new Date(last.fedAt) : null;
   const minsSince  = lastFeedAt ? differenceInMinutes(now, lastFeedAt) : null;
   const didntEat   = minsSince != null ? fmtMinutes(minsSince) : "—";
 
-  /* continuous minute-by-minute target so far today */
+  /* minute-by-minute target so far today */
   let targetSoFar = null;
   if (recToday > 0) {
     const minutesIntoDay = now.getHours() * 60 + now.getMinutes();
-    const fracDay        = minutesIntoDay / 1440;
-    targetSoFar          = Math.round(fracDay * recToday);
+    targetSoFar          = Math.round((minutesIntoDay / 1440) * recToday);
   }
 
-  /* actual ml consumed so far today */
   const actualSoFar = feeds.reduce((s, f) => s + f.amountMl, 0);
 
-  /* ─────────────────────────── UI ──────────────────────────────── */
+  /* ─────────────────────────── UI ─────────────────────────────── */
   return (
     <>
       <Header />
@@ -101,10 +98,10 @@ export default function MilkingDashboard() {
       {err && <p style={{ color:"#c00", padding:"0 1rem" }}>{err}</p>}
 
       <main>
-        {/* 1️⃣  Chart now comes first */}
-        <SummaryChart feeds={feeds} recommended={recToday} />
+        {/* 1️⃣  Feed INSERT form stays on top */}
+        <FeedForm onSave={handleSave} />
 
-        {/* 2️⃣  “Today at a glance” banner as a tidy 3-row table */}
+        {/* 2️⃣  Today-at-a-glance as a tidy table */}
         <section className="card" style={{ marginBottom:"1.5rem" }}>
           <h3 style={{ marginTop:0 }}>Today at a glance</h3>
           <table style={{ width:"100%", borderCollapse:"collapse" }}>
@@ -116,26 +113,25 @@ export default function MilkingDashboard() {
               {recPer > 0 && (
                 <tr>
                   <td><strong>Suggested per feed</strong></td>
-                  <td>{recPer} ml</td>
+                  <td>{recPer}&nbsp;ml</td>
                 </tr>
               )}
               {targetSoFar != null && (
                 <tr>
                   <td><strong>Should have eaten by now</strong></td>
-                  <td>
-                    {targetSoFar} ml&nbsp;
-                    <small style={{ opacity:0.7 }}>
-                      (logged&nbsp;{actualSoFar} ml)
-                    </small>
-                  </td>
+                  <td>{targetSoFar}&nbsp;ml</td>
                 </tr>
               )}
+              <tr>
+                <td><strong>Eaten so far</strong></td>
+                <td>{actualSoFar}&nbsp;ml</td>
+              </tr>
             </tbody>
           </table>
         </section>
 
-        {/* feed form + table come after visual context */}
-        <FeedForm onSave={handleSave} />
+        {/* 3️⃣  Chart sits immediately above the editable feeds table */}
+        <SummaryChart feeds={feeds} recommended={recToday} />
 
         <FeedTable
           rows={feeds}
