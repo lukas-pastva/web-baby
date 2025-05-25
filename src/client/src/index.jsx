@@ -6,37 +6,26 @@ import {
   initConfig,
   loadConfig,
   effectiveTheme,
-  storedMode,
+  effectiveMode,               // ← keep only these four
 } from "./config.js";
 
-/* ── helper to apply light/dark according to “auto” ─────────────── */
-function applyMode(mode) {
-  let real = mode;
-  if (mode === "auto") {
-    const h = new Date().getHours();
-    real = (h >= 7 && h < 19) ? "light" : "dark";
-  }
-  document.documentElement.setAttribute("data-mode", real);
-}
-
-/* ── bootstrap ──────────────────────────────────────────────────── */
+/* bootstrap – pull config, apply theme/mode, then mount SPA */
 (async () => {
+  /* pulls (or creates) the single config row */
   await initConfig();
+
   const cfg = loadConfig();
 
-  /* theme */
+  /* apply theme + light/dark mode */
   document.documentElement.setAttribute(
     "data-theme",
-    effectiveTheme(cfg.theme || "boy")
+    effectiveTheme(cfg.theme || "boy"),
+  );
+  document.documentElement.setAttribute(
+    "data-mode",
+    effectiveMode(cfg.mode || "light"),
   );
 
-  /* mode (light/dark/auto) */
-  applyMode(storedMode());
-
-  /* when in auto re-evaluate every 30 min */
-  if (storedMode() === "auto") {
-    setInterval(() => applyMode("auto"), 30 * 60 * 1000);
-  }
-
+  /* mount React app */
   createRoot(document.getElementById("root")).render(<AppRoutes />);
 })();
