@@ -4,33 +4,39 @@ import { ICONS, LABELS } from "../../../feedTypes.js";
 
 /**
  * Sortable, editable feed table with footer total.
+ * • Default is now **time-descending** (latest first).
  */
 export default function FeedTable({ rows, onUpdate, onDelete }) {
-  const [sortKey, setKey]     = useState("fedAt");
-  const [asc, setAsc]         = useState(true);
-  const [editingId, setEdit]  = useState(null);
-  const [formVals, setForm]   = useState({
+  /* ── sorting state ────────────────────────────────────────────── */
+  const [sortKey, setKey] = useState("fedAt");
+  const [asc, setAsc]     = useState(false);   // ← default DESCENDING
+
+  function sort(k) {
+    setAsc(k === sortKey ? !asc : false);      // new column → start DESC
+    setKey(k);
+  }
+
+  const sorted = [...rows].sort((a, b) => {
+    const d =
+      a[sortKey] < b[sortKey] ? -1 :
+      a[sortKey] > b[sortKey] ?  1 : 0;
+    return asc ? d : -d;
+  });
+
+  /* ── editing state ────────────────────────────────────────────── */
+  const [editingId, setEdit] = useState(null);
+  const [formVals, setForm]  = useState({
     amount   : "",
     type     : "FORMULA_BOTTLE",
     datePart : "",
     timePart : "",
   });
 
-  /* helpers */
-  function sort(k) {
-    setAsc(k === sortKey ? !asc : true);
-    setKey(k);
-  }
-
-  const sorted = [...rows].sort((a, b) => {
-    const d = a[sortKey] < b[sortKey] ? -1 : a[sortKey] > b[sortKey] ? 1 : 0;
-    return asc ? d : -d;
-  });
-
-  const totalMl = rows.reduce((s, r) => s + r.amountMl, 0);
+  /* footer total */
+  const totalMl   = rows.reduce((s, r) => s + r.amountMl, 0);
   const hasActions = onUpdate || onDelete;
 
-  /* edit actions */
+  /* ---- edit helpers -------------------------------------------- */
   function beginEdit(feed) {
     const dt = new Date(feed.fedAt);
     setForm({
@@ -58,7 +64,7 @@ export default function FeedTable({ rows, onUpdate, onDelete }) {
     if (onDelete && confirm("Delete this feed entry?")) await onDelete(id);
   }
 
-  /* UI */
+  /* ---- UI ------------------------------------------------------- */
   return (
     <>
       <h3>Feeds for the day</h3>
@@ -95,12 +101,15 @@ export default function FeedTable({ rows, onUpdate, onDelete }) {
                         >Edit</button>
                       )}
                       {onDelete && (
-                        <button className="btn-light" onClick={() => del(f.id)}>×</button>
+                        <button className="btn-light" onClick={() => del(f.id)}>
+                          ×
+                        </button>
                       )}
                     </td>
                   )}
                 </tr>
 
+                {/* inline editor */}
                 {editingId === f.id && (
                   <tr>
                     <td colSpan={hasActions ? 4 : 3}>
