@@ -4,33 +4,35 @@ import {
   differenceInCalendarDays,
 } from "date-fns";
 
-import Header       from "../../../components/Header.jsx";
-import api          from "../api.js";
-import DayCard      from "../components/DayCard.jsx";
-import AllDaysChart from "../components/AllDaysChart.jsx";
-import { loadConfig } from "../../../config.js";
+import Header          from "../../../components/Header.jsx";
+import api             from "../api.js";
+import DayCard         from "../components/DayCard.jsx";
+import AllDaysChart    from "../components/AllDaysChart.jsx";
+import FeedCountChart  from "../components/FeedCountChart.jsx";   // ← NEW
+import { loadConfig }  from "../../../config.js";
 import { ORDER as FEED_TYPES } from "../../../feedTypes.js";
 
 const DAYS_PER_PAGE = 50;
 
 export default function MilkingHistory() {
   const { birthTs: birthTsRaw } = loadConfig();
-  const birthDay = birthTsRaw ? startOfDay(new Date(birthTsRaw)) : startOfDay(new Date());
+  const birthDay = birthTsRaw ? startOfDay(new Date(birthTsRaw))
+                              : startOfDay(new Date());
   const today    = startOfDay(new Date());
 
-  const [page,    setPage]  = useState(0);
-  const [recs,    setRecs]  = useState([]);
-  const [feedsByDay, setData] = useState({});
-  const [err,     setErr]   = useState("");
-  const [loading, setLoading] = useState(false);
-  const [done,    setDone]  = useState(false);
+  const [page,         setPage]  = useState(0);
+  const [recs,         setRecs]  = useState([]);
+  const [feedsByDay,   setData]  = useState({});
+  const [err,          setErr]   = useState("");
+  const [loading,      setLoading] = useState(false);
+  const [done,         setDone]  = useState(false);
 
-  /* recommendations once */
+  /* ---- once: recommendation table -------------------------------- */
   useEffect(() => {
     api.listRecs().then(setRecs).catch(e => setErr(e.message));
   }, []);
 
-  /* paged loader birth→today */
+  /* ---- paged loader birth → today -------------------------------- */
   useEffect(() => {
     if (done) return;
     (async () => {
@@ -56,33 +58,50 @@ export default function MilkingHistory() {
     })();
   }, [page, done, birthDay, today]);
 
-  /* build arrays for multi-day chart */
+  /* ---- build arrays for the timeline charts ---------------------- */
   const ordered = Object.values(feedsByDay)
-                        .sort((a,b)=>b.date-a.date);
+                        .sort((a, b) => b.date - a.date);  // newest first
 
   const labels      = [];
   const recommended = [];
-  const stacks      = Object.fromEntries(FEED_TYPES.map(t=>[t,[]]));
+  const feedCounts  = [];                                  // ← NEW
+  const stacks      = Object.fromEntries(FEED_TYPES.map(t => [t, []]));
 
   ordered.forEach(({ date, rows }) => {
     labels.push(format(date, "d LLL"));
     const age = differenceInCalendarDays(date, birthDay);
-    recommended.push(recs.find(r=>r.ageDays===age)?.totalMl ?? 0);
+    recommended.push(
+      recs.find(r => r.ageDays === age)?.totalMl ?? 0,
+    );
 
-    const sums = Object.fromEntries(FEED_TYPES.map(t=>[t,0]));
+    feedCounts.push(rows.length);                          // ← NEW
+
+    const sums = Object.fromEntries(FEED_TYPES.map(t => [t, 0]));
     rows.forEach(f => { sums[f.feedingType] += f.amountMl; });
     FEED_TYPES.forEach(t => stacks[t].push(sums[t]));
   });
 
+  /* ---- UI -------------------------------------------------------- */
   return (
     <>
       <Header />
 
-      {err && <p style={{ color:"#c00", padding:"0 1rem" }}>{err}</p>}
+      {err && <p style={{ color: "#c00", padding: "0 1rem" }}>{err}</p>}
 
       <main>
         {labels.length > 0 && (
-          <AllDaysChart labels={labels} stacks={stacks} recommended={recommended} />
+          <>
+            <AllDaysChart
+              labels={labels}
+              stacks={stacks}
+              recommended={recommended}
+            />
+
+            <FeedCountChart                    {/* ← NEW visual */}
+              labels={labels}
+              counts={feedCounts}
+            />
+          </>
         )}
 
         {ordered.map(({ dayStr, date, rows }) => (
@@ -91,35 +110,53 @@ export default function MilkingHistory() {
             date={date}
             feeds={rows}
             recommended={
-              recs.find(r => r.ageDays === differenceInCalendarDays(date, birthDay))
-              ?.totalMl ?? 0
+              recs.find(
+                r => r.ageDays === differenceInCalendarDays(date, birthDay),
+              )?.totalMl ?? 0
             }
-            onUpdate={(id,p)=>
-              api.updateFeed(id,p)
-                 .then(()=>setData(d=>({
-                   ...d,
-                   [dayStr]: { ...d[dayStr], rows:d[dayStr].rows.map(r=>r.id===id?{...r,...p}:r) },
-                 })))
-                 .catch(e=>setErr(e.message))
+            onUpdate={(id, p) =>
+              api.updateFeed(id, p)
+                 .then(() =>
+                   setData(d => ({
+                     ...d,
+                     [dayStr]: {
+                       ...d[dayStr],
+                       rows: d[dayStr].rows.map(r =>
+                         r.id === id ? { ...r, ...p } : r,
+                       ),
+                     },
+                   })),
+                 )
+                 .catch(e => setErr(e.message))
             }
-            onDelete={id=>
+            onDelete={id =>
               api.deleteFeed(id)
-                 .then(()=>setData(d=>({
-                   ...d,
-                   [dayStr]: { ...d[dayStr], rows:d[dayStr].rows.filter(r=>r.id!==id) },
-                 })))
-                 .catch(e=>setErr(e.message))
+                 .then(() =>
+                   setData(d => ({
+                     ...d,
+                     [dayStr]: {
+                       ...d[dayStr],
+                       rows: d[dayStr].rows.filter(r => r.id !== id),
+                     },
+                   })),
+                 )
+                 .catch(e => setErr(e.message))
             }
           />
         ))}
 
-        <div style={{ textAlign:"center", margin:"1.5rem 0" }}>
+        <div style={{ textAlign: "center", margin: "1.5rem 0" }}>
           {loading ? (
             <p>Loading…</p>
           ) : done ? (
-            <p><em>End of timeline</em></p>
+            <p>
+              <em>End of timeline</em>
+            </p>
           ) : (
-            <button className="btn-light" onClick={()=>setPage(p=>p+1)}>
+            <button
+              className="btn-light"
+              onClick={() => setPage(p => p + 1)}
+            >
               Next {DAYS_PER_PAGE} days →
             </button>
           )}
