@@ -8,7 +8,7 @@ import Header          from "../../../components/Header.jsx";
 import api             from "../api.js";
 import DayCard         from "../components/DayCard.jsx";
 import AllDaysChart    from "../components/AllDaysChart.jsx";
-import FeedCountChart  from "../components/FeedCountChart.jsx";   // ← NEW
+import FeedCountChart  from "../components/FeedCountChart.jsx";
 import { loadConfig }  from "../../../config.js";
 import { ORDER as FEED_TYPES } from "../../../feedTypes.js";
 
@@ -64,7 +64,7 @@ export default function MilkingHistory() {
 
   const labels      = [];
   const recommended = [];
-  const feedCounts  = [];                                  // ← NEW
+  const feedCounts  = [];
   const stacks      = Object.fromEntries(FEED_TYPES.map(t => [t, []]));
 
   ordered.forEach(({ date, rows }) => {
@@ -74,7 +74,7 @@ export default function MilkingHistory() {
       recs.find(r => r.ageDays === age)?.totalMl ?? 0,
     );
 
-    feedCounts.push(rows.length);                          // ← NEW
+    feedCounts.push(rows.length);          // feeds per day
 
     const sums = Object.fromEntries(FEED_TYPES.map(t => [t, 0]));
     rows.forEach(f => { sums[f.feedingType] += f.amountMl; });
@@ -97,7 +97,8 @@ export default function MilkingHistory() {
               recommended={recommended}
             />
 
-            <FeedCountChart                    {/* ← NEW visual */}
+            {/* feeds-per-day bar chart */}
+            <FeedCountChart
               labels={labels}
               counts={feedCounts}
             />
