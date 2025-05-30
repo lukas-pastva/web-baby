@@ -5,38 +5,45 @@ import {
   addDays,
 } from "date-fns";
 
-import Header        from "../../../components/Header.jsx";
-import api           from "../api.js";
-import WeightForm    from "../components/WeightForm.jsx";
-import WeightTable   from "../components/WeightTable.jsx";
-import WeightChart   from "../components/WeightChart.jsx";
+import Header       from "../../../components/Header.jsx";
+import api          from "../api.js";
+import WeightForm   from "../components/WeightForm.jsx";
+import WeightTable  from "../components/WeightTable.jsx";
+import WeightChart  from "../components/WeightChart.jsx";
 import { loadConfig } from "../../../config.js";
+import { WHO_MEDIAN_KG, medianRatio } from "../whoMedian.js";   // NEW
 
-/* ── simple piece-wise growth model (0-12 m) ──────────────────────────
- * Approximate WHO girl standards centred on birth weight.
- * • 0-3 m  ~ +30 g/day
- * • 4-6 m  ~ +20 g/day
- * • 7-12 m ~ +10 g/day
- */
-function expectedWeight(birthGrams, ageDays) {
+/* --------------------------------------------------------------- */
+/*  Median-based expectation                                       */
+/* --------------------------------------------------------------- */
+function expectedWeight(birthGrams, sex, ageDays) {
   if (!birthGrams) return null;
-  if (ageDays <= 90)   return birthGrams + ageDays * 30;
-  if (ageDays <= 180)  return birthGrams + 90 * 30 + (ageDays - 90)  * 20;
-  /* 181-365 */
-  return birthGrams + 90 * 30 + 90 * 20 + (ageDays - 180) * 10;
+
+  /* Day-0 to Day-10: include physiological loss then regain */
+  if (ageDays <= 3)   return Math.round(birthGrams * (1 - 0.07 * (ageDays / 3)));
+  if (ageDays <= 10)  return Math.round(birthGrams * (0.93 + 0.07 * ((ageDays - 3) / 7)));
+
+  /* ≥ Day-11: scale birth-weight by WHO median ratio          */
+  const ratio = medianRatio(sex, ageDays);
+  return Math.round(birthGrams * ratio);
 }
 
 export default function WeightDashboard() {
-  const { birthTs: birthTsRaw, birthWeightGrams } = loadConfig();
-  const birthDate   = birthTsRaw ? new Date(birthTsRaw) : null;
-  const initWeight  = Number.isFinite(birthWeightGrams) ? birthWeightGrams : 3500;
+  /* ---- basic config -------------------------------------------- */
+  const {
+    birthTs         : birthTsRaw,
+    birthWeightGrams,
+    theme,                          // boy / girl  (used as sex hint)
+  } = loadConfig();
 
+  const sex         = theme === "boy" ? "boy" : "girl";
+  const birthDate   = birthTsRaw ? new Date(birthTsRaw) : null;
+  const birthWeight = Number.isFinite(birthWeightGrams) ? birthWeightGrams : 3500;
+
+  /* ---- CRUD helpers -------------------------------------------- */
   const [weights, setWeights] = useState([]);
   const [err,     setErr]     = useState("");
 
-  /* ------------------------------------------------------------------ */
-  /*  CRUD helpers                                                      */
-  /* ------------------------------------------------------------------ */
   const reload = () =>
     api.listWeights().then(setWeights).catch(e => setErr(e.message));
   useEffect(reload, []);
@@ -45,70 +52,53 @@ export default function WeightDashboard() {
   const handleUpdate = (id,p) => api.updateWeight(id,p).then(reload).catch(e => setErr(e.message));
   const handleDelete = id     => api.deleteWeight(id)  .then(reload).catch(e => setErr(e.message));
 
-  /* ------------------------------------------------------------------ */
-  /*  Build *continuous* day-by-day series for the chart                */
-  /* ------------------------------------------------------------------ */
-  const { labels, weightSeries, normal, over, under } = useMemo(() => {
-    /* nothing recorded yet → empty chart */
-    if (weights.length === 0) {
-      return { labels: [], weightSeries: [], normal: [], over: [], under: [] };
-    }
+  /* --------------------------------------------------------------- */
+  /*  Build *continuous* day-by-day series                           */
+  /* --------------------------------------------------------------- */
+  const { labels, W, N, O, U } = useMemo(() => {
+    if (weights.length === 0) return { labels: [], W: [], N: [], O: [], U: [] };
 
-    /* map for O(1) look-up of recorded weights */
-    const byDay = Object.fromEntries(
-      weights.map(w => [w.measuredAt, w.weightGrams])
-    );
+    const byDay = Object.fromEntries(weights.map(w => [w.measuredAt, w.weightGrams]));
 
-    /* timeline bounds: first recorded day (or birth) → today */
     const start = birthDate ?? new Date(weights[0].measuredAt);
     const end   = startOfToday();
     const days  = differenceInCalendarDays(end, start) + 1;
 
-    const L = [];
-    const S = [];
-    const N = [];
-    const O = [];
-    const U = [];
+    const L = [], S = [], M = [], Hi = [], Lo = [];
 
-    for (let i = 0; i < days; i++) {
-      const d      = addDays(start, i);
-      const isoDay = d.toISOString().slice(0, 10);   // YYYY-MM-DD
+    for (let d = 0; d < days; d++) {
+      const dt     = addDays(start, d);
+      const isoDay = dt.toISOString().slice(0,10);
+
+      const exp = birthDate ? expectedWeight(birthWeight, sex, d) : null;
 
       L.push(isoDay);
-      S.push(byDay[isoDay] ?? null);                 // ⟵ null = gap in the line
-
-      if (birthDate && initWeight) {
-        const age = differenceInCalendarDays(d, birthDate);
-        const rec = expectedWeight(initWeight, age);
-        N.push(rec ?? null);
-        O.push(rec ? Math.round(rec * 1.10) : null); // +10 %
-        U.push(rec ? Math.round(rec * 0.90) : null); // –10 %
-      } else {
-        N.push(null); O.push(null); U.push(null);
-      }
+      S.push(byDay[isoDay] ?? null);
+      M.push(exp ?? null);
+      Hi.push(exp ? Math.round(exp * 1.10) : null);
+      Lo.push(exp ? Math.round(exp * 0.90) : null);
     }
+    return { labels: L, W: S, N: M, O: Hi, U: Lo };
+  }, [weights, birthDate, birthWeight, sex]);
 
-    return { labels: L, weightSeries: S, normal: N, over: O, under: U };
-  }, [weights, birthDate, initWeight]);
-
-  /* ------------------------------------------------------------------ */
-  /*  Render                                                            */
-  /* ------------------------------------------------------------------ */
+  /* --------------------------------------------------------------- */
+  /*  Render                                                         */
+  /* --------------------------------------------------------------- */
   return (
     <>
       <Header />
 
-      {err && <p style={{ color:"#c00", padding:"0 1rem" }}>{err}</p>}
+      {err && <p style={{ color: "#c00", padding: "0 1rem" }}>{err}</p>}
 
       <main>
         <WeightForm onSave={handleSave} defaultDate={startOfToday()} />
 
         <WeightChart
           labels={labels}
-          weights={weightSeries}
-          normal={normal}
-          over={over}
-          under={under}
+          weights={W}
+          normal={N}
+          over={O}
+          under={U}
         />
 
         <WeightTable
