@@ -2,9 +2,6 @@ import React from "react";
 import { differenceInCalendarDays, startOfToday } from "date-fns";
 import { loadConfig } from "../config.js";
 
-/* Single place that shows the constant title */
-const TITLE = "Web-Baby";
-
 export default function Header({ showMeta = true }) {
   const p = window.location.pathname;
 
@@ -24,8 +21,7 @@ export default function Header({ showMeta = true }) {
 
   return (
     <header className="mod-header">
-      <h1>{TITLE}</h1>
-
+      {/* ── centred nav ─────────────────────────────────────────── */}
       <nav className="nav-center">
         <a href="/milking"      className={p === "/milking"             ? "active" : ""}>Today</a>
         <a href="/milking/all"  className={p.startsWith("/milking/all") ? "active" : ""}>All&nbsp;days</a>
@@ -34,6 +30,7 @@ export default function Header({ showMeta = true }) {
         <a href="/help"         className={p === "/help"                ? "active" : ""}>Help</a>
       </nav>
 
+      {/* ── meta (right-hand side) ──────────────────────────────── */}
       {showMeta && (child || ageText) && (
         <div className="meta" style={{ textAlign: "right", lineHeight: 1.2 }}>
           {child && <strong>{child}</strong>}
