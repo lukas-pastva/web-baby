@@ -1,24 +1,23 @@
-/* ────────────────────────────────────────────────────────────────────
+/* ────────────────────────────────────────────────────────────────
  * Central application configuration – persisted on the server
- * ──────────────────────────────────────────────────────────────────── */
+ * ──────────────────────────────────────────────────────────────── */
 
-import { ORDER as ALL_TYPES } from "./feedTypes.js";   // canonical list
-export { ALL_TYPES };                                  // ← RE-EXPORT!
+import { ORDER as ALL_TYPES } from "./feedTypes.js";
 
+/* appTitle removed → constant in Header.jsx */
 const DEFAULT_CFG = {
   theme        : "boy",
-  mode         : "auto",
+  mode         : "light",
   disabledTypes: [],
   childName    : "",
   childSurname : "",
   birthTs      : "",
-  appTitle     : "Web-Baby",
   birthWeightGrams: null,
 };
 
 let CACHE = { ...DEFAULT_CFG };
 
-/* pulls (or creates) the single config row */
+/* pull (or create) the single row */
 export async function initConfig() {
   try {
     const r = await fetch("/api/config");
@@ -29,18 +28,14 @@ export async function initConfig() {
   }
 }
 
-export function loadConfig() { return CACHE; }
-
-/* helpers ---------------------------------------------------------- */
-export function effectiveTheme(fallback="boy") { return CACHE.theme ?? fallback; }
-export function effectiveMode (fallback="light") { return CACHE.mode  ?? fallback; }
-export function storedMode()  { return CACHE.mode ?? "auto"; }
-export function isTypeEnabled(t) { return !CACHE.disabledTypes.includes(t); }
-export function birthTimestamp() { return CACHE.birthTs || null; }
+export function loadConfig()      { return CACHE; }
+export function effectiveTheme(fallback="boy")  { return CACHE.theme ?? fallback; }
+export function effectiveMode (fallback="light"){ return CACHE.mode  ?? fallback; }
+export function isTypeEnabled(t)  { return !CACHE.disabledTypes.includes(t); }
+export function birthTimestamp()  { return CACHE.birthTs || null; }
 export function birthWeight() {
   return Number.isFinite(CACHE.birthWeightGrams) ? CACHE.birthWeightGrams : null;
 }
-export function appTitle() { return CACHE.appTitle || "Web-Baby"; }
 
 /* save to DB and cache locally */
 export async function saveConfig(partial) {

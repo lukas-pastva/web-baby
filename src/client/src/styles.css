@@ -2,9 +2,9 @@
 
 /* ─────────────────────────── theme vars (accent) */
 :root {
-  --accent        : #18be94;      /* boy / teal */
-  --accent-contr  : #ffffff;
-  --header-bg     : #0f2733;      /* navy */
+  --accent       : #18be94;      /* boy / teal */
+  --accent-contr : #ffffff;
+  --header-bg    : #0f2733;      /* navy */
 }
 /* girl palette */
 [data-theme="girl"] {
@@ -12,13 +12,14 @@
   --header-bg : #4d2748;
 }
 
-/* ─────────────────────────── colour-scheme vars  */
+/* ─────────────────────────── colour-scheme vars */
 :root[data-mode="light"] {
   --bg-page : #f9fafb;
   --bg-card : #ffffff;
   --fg-text : #0f172a;
   --row-alt : #f5f7fa;
   --border  : #d2d8e0;
+  --edit-bg : #e0f7f4;           /* ← highlight in light */
 }
 :root[data-mode="dark"] {
   --bg-page : #111827;
@@ -26,6 +27,7 @@
   --fg-text : #e5e7eb;
   --row-alt : #1e293b;
   --border  : #374151;
+  --edit-bg : #084c46;           /* ← darker teal for night */
 }
 
 /* ─────────────────────────── base */
@@ -148,8 +150,8 @@ tbody tr:nth-child(odd){background:var(--row-alt)}
 
 /* ─────────────────────────── Config page */
 .config-wrap{
-  max-width:800px;          /* was 500px */
-  margin:0;                 /* flush-left */
+  max-width:800px;
+  margin:0;
 }
 .config-types{list-style:none;padding:0;text-align:center}
 .config-types li{display:inline-block;margin:0 .75rem .4rem}
@@ -158,5 +160,5 @@ tbody tr:nth-child(odd){background:var(--row-alt)}
 @media(max-width:600px){
   html{font-size:92%}
   header.mod-header h1{font-size:1.25rem}
-  .config-wrap{max-width:100%;}          /* still fluid on phones */
+  .config-wrap{max-width:100%;}
 }

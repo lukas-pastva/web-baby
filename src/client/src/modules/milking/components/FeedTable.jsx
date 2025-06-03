@@ -2,12 +2,12 @@ import React, { useState } from "react";
 import { format, formatISO } from "date-fns";
 import { ICONS, LABELS } from "../../../feedTypes.js";
 
-/**
- * Sortable, editable feed table with footer total.
- */
+/* highlight colour for the row being edited (defined in CSS) */
+const EDIT_BG = "var(--edit-bg)";
+
 export default function FeedTable({ rows, onUpdate, onDelete }) {
   const [sortKey, setKey]     = useState("fedAt");
-  const [asc, setAsc]         = useState(true);
+  const [asc, setAsc]         = useState(false);      // ← newest-first default
   const [editingId, setEdit]  = useState(null);
   const [formVals, setForm]   = useState({
     amount   : "",
@@ -16,40 +16,41 @@ export default function FeedTable({ rows, onUpdate, onDelete }) {
     timePart : "",
   });
 
-  /* helpers */
+  /* -------- sorting --------------------------------------------- */
   function sort(k) {
-    setAsc(k === sortKey ? !asc : true);
+    setAsc(k === sortKey ? !asc : true);   // new column → ascending first
     setKey(k);
   }
 
   const sorted = [...rows].sort((a, b) => {
-    const d = a[sortKey] < b[sortKey] ? -1 : a[sortKey] > b[sortKey] ? 1 : 0;
+    const d =
+      a[sortKey] < b[sortKey] ? -1 :
+      a[sortKey] > b[sortKey] ?  1 : 0;
     return asc ? d : -d;
   });
 
   const totalMl = rows.reduce((s, r) => s + r.amountMl, 0);
-  const hasActions = onUpdate || onDelete;
+  const hasAct  = onUpdate || onDelete;
 
-  /* edit actions */
-  function beginEdit(feed) {
-    const dt = new Date(feed.fedAt);
+  /* -------- edit helpers ---------------------------------------- */
+  function beginEdit(f) {
+    const dt = new Date(f.fedAt);
     setForm({
-      amount   : feed.amountMl,
-      type     : feed.feedingType,
-      datePart : format(dt, "yyyy-MM-dd"),
-      timePart : format(dt, "HH:mm"),
+      amount  : f.amountMl,
+      type    : f.feedingType,
+      datePart: format(dt, "yyyy-MM-dd"),
+      timePart: format(dt, "HH:mm"),
     });
-    setEdit(feed.id);
+    setEdit(f.id);
   }
 
   async function saveEdit(e) {
     e.preventDefault();
     const { amount, type, datePart, timePart } = formVals;
-    const fedAt = formatISO(new Date(`${datePart}T${timePart}`));
     await onUpdate(editingId, {
       amountMl   : Number(amount),
       feedingType: type,
-      fedAt,
+      fedAt      : formatISO(new Date(`${datePart}T${timePart}`)),
     });
     setEdit(null);
   }
@@ -58,7 +59,7 @@ export default function FeedTable({ rows, onUpdate, onDelete }) {
     if (onDelete && confirm("Delete this feed entry?")) await onDelete(id);
   }
 
-  /* UI */
+  /* -------- UI --------------------------------------------------- */
   return (
     <>
       <h3>Feeds for the day</h3>
@@ -71,54 +72,70 @@ export default function FeedTable({ rows, onUpdate, onDelete }) {
               <th onClick={() => sort("fedAt")}>Time</th>
               <th onClick={() => sort("amountMl")}>Amount&nbsp;(ml)</th>
               <th>Type</th>
-              {hasActions && <th></th>}
+              {hasAct && <th></th>}
             </tr>
           </thead>
 
           <tbody>
             {sorted.map(f => (
               <React.Fragment key={f.id}>
-                <tr>
+                <tr style={editingId === f.id ? { background: EDIT_BG } : undefined}>
                   <td>{format(new Date(f.fedAt), "HH:mm")}</td>
                   <td>{f.amountMl}</td>
                   <td>
                     <span className="feed-icon">{ICONS[f.feedingType]}</span>
                     {LABELS[f.feedingType]}
                   </td>
-                  {hasActions && (
-                    <td style={{ whiteSpace:"nowrap" }}>
+                  {hasAct && (
+                    <td style={{ whiteSpace: "nowrap" }}>
                       {onUpdate && (
                         <button
                           className="btn-light"
                           onClick={() => beginEdit(f)}
-                          style={{ marginRight:".4rem" }}
-                        >Edit</button>
+                          style={{ marginRight: ".4rem" }}
+                        >
+                          Edit
+                        </button>
                       )}
                       {onDelete && (
-                        <button className="btn-light" onClick={() => del(f.id)}>×</button>
+                        <button
+                          className="btn-light"
+                          onClick={() => del(f.id)}
+                        >
+                          ×
+                        </button>
                       )}
                     </td>
                   )}
                 </tr>
 
                 {editingId === f.id && (
-                  <tr>
-                    <td colSpan={hasActions ? 4 : 3}>
+                  <tr style={{ background: EDIT_BG }}>
+                    <td colSpan={hasAct ? 4 : 3}>
                       <form
                         onSubmit={saveEdit}
-                        style={{ display:"flex", gap:".5rem", flexWrap:"wrap" }}
+                        style={{
+                          display: "flex",
+                          gap: ".5rem",
+                          flexWrap: "wrap",
+                          alignItems: "center",
+                        }}
                       >
                         <input
                           type="number"
                           value={formVals.amount}
-                          onChange={e => setForm({ ...formVals, amount:e.target.value })}
+                          onChange={e =>
+                            setForm({ ...formVals, amount: e.target.value })
+                          }
                           min={0}
                           required
-                          style={{ width:90 }}
+                          style={{ width: 90 }}
                         />
                         <select
                           value={formVals.type}
-                          onChange={e => setForm({ ...formVals, type:e.target.value })}
+                          onChange={e =>
+                            setForm({ ...formVals, type: e.target.value })
+                          }
                         >
                           {Object.entries(LABELS).map(([val, label]) => (
                             <option key={val} value={val}>
@@ -129,13 +146,17 @@ export default function FeedTable({ rows, onUpdate, onDelete }) {
                         <input
                           type="date"
                           value={formVals.datePart}
-                          onChange={e => setForm({ ...formVals, datePart:e.target.value })}
+                          onChange={e =>
+                            setForm({ ...formVals, datePart: e.target.value })
+                          }
                           required
                         />
                         <input
                           type="time"
                           value={formVals.timePart}
-                          onChange={e => setForm({ ...formVals, timePart:e.target.value })}
+                          onChange={e =>
+                            setForm({ ...formVals, timePart: e.target.value })
+                          }
                           required
                         />
                         <button className="btn">Save</button>
@@ -155,10 +176,10 @@ export default function FeedTable({ rows, onUpdate, onDelete }) {
           </tbody>
 
           <tfoot>
-            <tr style={{ background:"#f0f3f7", fontWeight:600 }}>
+            <tr style={{ background: "#f0f3f7", fontWeight: 600 }}>
               <td>Total</td>
               <td>{totalMl}</td>
-              <td colSpan={hasActions ? 2 : 1}></td>
+              <td colSpan={hasAct ? 2 : 1}></td>
             </tr>
           </tfoot>
         </table>

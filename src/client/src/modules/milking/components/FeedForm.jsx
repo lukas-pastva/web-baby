@@ -1,42 +1,68 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { format, formatISO } from "date-fns";
 import { isTypeEnabled }   from "../../../config.js";
 import {
   ORDER       as TYPES_IN_ORDER,
-  ICONS,
-  LABELS,
+  ICONS, LABELS,
 } from "../../../feedTypes.js";
 
-/* dropdown amounts: 10 ml → 300 ml in 5 ml steps */
-const AMOUNT_OPTS = Array.from({ length: 59 }, (_, i) => 10 + i * 5); // 10–300
+/* amounts 10-300 ml in 5-ml steps */
+const AMOUNT_OPTS = Array.from({ length: 59 }, (_, i) => 10 + i * 5);
+
+function nowDate() { return format(new Date(), "yyyy-MM-dd"); }
+function nowTime() { return format(new Date(), "HH:mm"); }
 
 export default function FeedForm({ onSave }) {
-  const now           = new Date();
-  const enabledTypes  = TYPES_IN_ORDER.filter(isTypeEnabled);
-  const fallbackType  = enabledTypes[0] || TYPES_IN_ORDER[0];
+  const enabledTypes = TYPES_IN_ORDER.filter(isTypeEnabled);
+  const fallbackType = enabledTypes[0] || TYPES_IN_ORDER[0];
 
-  const [amount, setAmt] = useState(60);                           // default
+  /* ---- state ----------------------------------------------------- */
+  const [amount, setAmt] = useState(60);
   const [type,   setType] = useState(fallbackType);
-  const [date,   setDate] = useState(format(now, "yyyy-MM-dd"));
-  const [time,   setTime] = useState(format(now, "HH:mm"));
+  const [date,   setDate] = useState(nowDate());
+  const [time,   setTime] = useState(nowTime());
 
+  const [auto,   setAuto] = useState(true);   // auto-update flag
   const [saving, setSaving] = useState(false);
   const [saved,  setSaved]  = useState(false);
 
+  /* ---- keep date/time current every minute while auto === true --- */
+  useEffect(() => {
+    if (!auto) return;
+    const id = setInterval(() => {
+      setDate(nowDate());
+      setTime(nowTime());
+    }, 60_000);
+    return () => clearInterval(id);
+  }, [auto]);
+
+  /* stop auto when user edits date or time */
+  function handleDate(e) { setDate(e.target.value); setAuto(false); }
+  function handleTime(e) { setTime(e.target.value); setAuto(false); }
+
+  /* ---- submit ---------------------------------------------------- */
   async function handleSubmit(e) {
     e.preventDefault();
     setSaving(true);
+
     await onSave({
       fedAt      : formatISO(new Date(`${date}T${time}`)),
       amountMl   : Number(amount),
       feedingType: type,
     });
+
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
-    setAmt(60);                          // reset to 60 ml
+
+    /* reset form & restart auto-updating */
+    setAmt(60);
+    setDate(nowDate());
+    setTime(nowTime());
+    setAuto(true);
   }
 
+  /* ---- UI -------------------------------------------------------- */
   return (
     <section className="card" style={{ marginBottom:"1rem", maxWidth:"600px" }}>
       <h3 style={{ marginTop:0 }}>Add feed</h3>
@@ -85,7 +111,7 @@ export default function FeedForm({ onSave }) {
                 <input
                   type="date"
                   value={date}
-                  onChange={e => setDate(e.target.value)}
+                  onChange={handleDate}
                   style={{ width:"100%" }}
                   required
                 />
@@ -98,7 +124,7 @@ export default function FeedForm({ onSave }) {
                 <input
                   type="time"
                   value={time}
-                  onChange={e => setTime(e.target.value)}
+                  onChange={handleTime}
                   style={{ width:"100%" }}
                   required
                 />

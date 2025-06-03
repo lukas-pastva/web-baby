@@ -6,26 +6,45 @@ import {
   initConfig,
   loadConfig,
   effectiveTheme,
-  effectiveMode,               // ← keep only these four
+  effectiveMode,
 } from "./config.js";
 
-/* bootstrap – pull config, apply theme/mode, then mount SPA */
-(async () => {
-  /* pulls (or creates) the single config row */
-  await initConfig();
+/* --------------------------------------------------------------- */
+/*  Helper: resolve “auto” → light/dark by local daylight          */
+/* --------------------------------------------------------------- */
+function daylightMode() {
+  const h = new Date().getHours();        // 0-23 local
+  return h >= 7 && h < 19 ? "light" : "dark";
+}
 
+/* --------------------------------------------------------------- */
+/*  Bootstrap: pull config → apply theme/mode → mount SPA          */
+/* --------------------------------------------------------------- */
+(async () => {
+  /* fetch (or create) the single config row */
+  await initConfig();
   const cfg = loadConfig();
 
-  /* apply theme + light/dark mode */
+  /* ---- accent palette ------------------------------------------ */
   document.documentElement.setAttribute(
     "data-theme",
     effectiveTheme(cfg.theme || "boy"),
   );
-  document.documentElement.setAttribute(
-    "data-mode",
-    effectiveMode(cfg.mode || "light"),
-  );
 
-  /* mount React app */
+  /* ---- colour-scheme (light / dark / auto) --------------------- */
+  function applyMode() {
+    const stored = effectiveMode(cfg.mode || "light");   // light | dark | auto
+    const real   = stored === "auto" ? daylightMode() : stored;
+    document.documentElement.setAttribute("data-mode", real);
+  }
+
+  applyMode();
+
+  /* re-evaluate every 30 min when in “auto” */
+  if (effectiveMode(cfg.mode || "light") === "auto") {
+    setInterval(applyMode, 30 * 60 * 1000);
+  }
+
+  /* ---- mount React app ----------------------------------------- */
   createRoot(document.getElementById("root")).render(<AppRoutes />);
 })();
