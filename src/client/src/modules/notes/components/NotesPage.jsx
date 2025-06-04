@@ -1,6 +1,6 @@
 import React,{useEffect,useState} from "react";
 import { formatISO, format } from "date-fns";
-import Header  from "../../components/Header.jsx";
+import Header  from "../../../components/Header.jsx";
 import api     from "../api.js";
 import NoteModal from "./NoteModal.jsx";
 
