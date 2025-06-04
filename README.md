@@ -1,7 +1,8 @@
 # Web-Baby 👶🍼
 
-A lightweight full-stack app that helps new parents log and visualise their
-baby’s milk intake.
+A lightweight full-stack app that helps new parents **log, visualise and
+annotate** their baby’s daily life — milk intake, weight -- and now free-form
+**notes** (vaccinations, milestones, probiotics …).
 
 | Variable          | Required | Example                                   |
 |-------------------|----------|-------------------------------------------|
@@ -16,6 +17,26 @@ baby’s milk intake.
 
 \* Provide either `DATABASE_URL` **or** the individual `DB_*` variables.
 
-**Theme, baby name and feed-type visibility are now persisted in the database
-and can be changed at any time from the in-app <kbd>Config</kbd> page – no
-environment variables needed.**
+### What’s inside 📦
+| Page          | What it does                                                             |
+|---------------|--------------------------------------------------------------------------|
+| **Today**     | Log feeds, see stacked chart and running total for the current day.      |
+| **All days**  | Infinite-scroll timeline with per-day collapsible cards + two charts.    |
+| **Weight**    | Record daily weight, view chart against WHO growth standards.            |
+| **Notes**     | Free-text dated notes (vaccinations, supplements, milestones …).         |
+| **Config**    | Accent colour (boy / girl), light/dark/auto mode, birth details, hide feed types. |
+| **Help**      | App overview, shortcuts and FAQ.                                         |
+
+All settings live in **MariaDB / MySQL** — tables are auto-created on first run.
+
+### Local dev ▶️
+```bash
+# front-end
+cd src/client
+npm i
+npm run dev      # http://localhost:5173  (proxy → 8080)
+
+# back-end
+cd ../server
+npm i
+PORT=8080 node src/index.js
