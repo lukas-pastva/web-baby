@@ -26,6 +26,7 @@ export default function Header({ showMeta = true }) {
         <a href="/milking"      className={p === "/milking"             ? "active" : ""}>Today</a>
         <a href="/milking/all"  className={p.startsWith("/milking/all") ? "active" : ""}>All&nbsp;days</a>
         <a href="/weight"       className={p === "/weight"              ? "active" : ""}>Weight</a>
+        <a href="/notes"        className={p === "/notes"               ? "active" : ""}>Notes</a>
         <a href="/config"       className={p === "/config"              ? "active" : ""}>Config</a>
         <a href="/help"         className={p === "/help"                ? "active" : ""}>Help</a>
       </nav>

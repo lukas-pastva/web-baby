@@ -8,6 +8,8 @@ import milkingRoutes  from "./modules/milking/routes.js";
 import { syncAll }    from "./modules/milking/seed.js";
 import weightRoutes   from "./modules/weight/routes.js";
 import { syncWeight } from "./modules/weight/seed.js";
+import notesRoutes    from "./modules/notes/routes.js";
+import { syncNotes }  from "./modules/notes/seed.js";
 
 /* ─── config module ─────────────────────────────────────────────── */
 import configRoutes   from "./modules/config/routes.js";
@@ -15,7 +17,7 @@ import { syncConfig } from "./modules/config/seed.js";
 
 /* ─── bootstrap ─────────────────────────────────────────────────── */
 dotenv.config();
-await Promise.all([syncAll(), syncWeight(), syncConfig()]);
+await Promise.all([syncAll(), syncWeight(), syncConfig(), syncNotes()]);
 
 const app  = express();
 const port = process.env.PORT || 8080;
@@ -27,6 +29,7 @@ app.use(express.json());
 /* API routes */
 app.use(milkingRoutes);
 app.use(weightRoutes);
+app.use(notesRoutes);
 app.use(configRoutes);
 
 /* static SPA */
