@@ -6,18 +6,29 @@ import dotenv   from "dotenv";
 
 import milkingRoutes  from "./modules/milking/routes.js";
 import { syncAll }    from "./modules/milking/seed.js";
+
 import weightRoutes   from "./modules/weight/routes.js";
 import { syncWeight } from "./modules/weight/seed.js";
-import notesRoutes    from "./modules/notes/routes.js";
-import { syncNotes }  from "./modules/notes/seed.js";
 
-/* ─── config module ─────────────────────────────────────────────── */
+/* config (theme / palette / etc.) */
 import configRoutes   from "./modules/config/routes.js";
 import { syncConfig } from "./modules/config/seed.js";
 
-/* ─── bootstrap ─────────────────────────────────────────────────── */
+/* NEW – notes */
+import noteRoutes     from "./modules/notes/routes.js";
+import { syncNotes }  from "./modules/notes/seed.js";
+
+/* ─────────────────────────────────────────────────────────────── */
+
 dotenv.config();
-await Promise.all([syncAll(), syncWeight(), syncConfig(), syncNotes()]);
+
+/* ensure all tables exist / migrate */
+await Promise.all([
+  syncAll(),      // milking
+  syncWeight(),   // weight
+  syncConfig(),   // app config
+  syncNotes(),    // notes  ← NEW
+]);
 
 const app  = express();
 const port = process.env.PORT || 8080;
@@ -26,13 +37,13 @@ const port = process.env.PORT || 8080;
 app.use(cors());
 app.use(express.json());
 
-/* API routes */
+/* REST API */
 app.use(milkingRoutes);
 app.use(weightRoutes);
-app.use(notesRoutes);
 app.use(configRoutes);
+app.use(noteRoutes);       /* ← NEW */
 
-/* static SPA */
+/* static SPA (built by Vite) */
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 app.use(express.static(path.join(__dirname, "../public")));
 app.get("*", (_req, res) =>
