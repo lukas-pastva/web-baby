@@ -25,17 +25,19 @@ ChartJS.register(
   Legend,
 );
 
-/* colour + label map from the single source */
+/* single source of truth for colour + label */
 const TYPE_META = buildTypeMeta();
 
 export default function AllDaysChart({
   labels = [],
-  stacks = {},          // { FEED_TYPE: [...] }
-  recommended = [],
+  stacks = {},          // { FEED_TYPE : [ … ] }
+  recommended = [],     // daily recommended totals
 }) {
   const accent = accentColor();
 
-  /* bar datasets in canonical order */
+  /* ─────────────────────────────────────────  datasets  */
+  /* bar segments, one dataset per feed-type – all share the same
+     “feeds” stack so only they are stacked, NOT the line series      */
   const datasets = FEED_TYPES.map((code) => ({
     type: "bar",
     label: TYPE_META[code].lbl,
@@ -45,7 +47,7 @@ export default function AllDaysChart({
     yAxisID: "y",
   }));
 
-  /* total line */
+  /* running total line (top of the bars) */
   const totals = labels.map((_, i) =>
     FEED_TYPES.reduce((s, k) => s + (stacks[k]?.[i] || 0), 0),
   );
@@ -58,9 +60,11 @@ export default function AllDaysChart({
     tension: 0.25,
     pointRadius: 3,
     yAxisID: "y",
+    order: 80,
   });
 
-  /* recommended dotted line on the same axis so it’s always visible */
+  /* recommended dotted line – plotted ON the same axis but **not**
+     stacked, so the y-value is used as-is (no doubling).            */
   datasets.push({
     type: "line",
     label: "Recommended",
@@ -70,9 +74,10 @@ export default function AllDaysChart({
     pointRadius: 2,
     tension: 0.25,
     yAxisID: "y",
-    order: 99, // draw on top
+    order: 99,          // draw above everything
   });
 
+  /* ─────────────────────────────────────────  chart cfg  */
   const data = { labels, datasets };
 
   const options = {
@@ -81,7 +86,9 @@ export default function AllDaysChart({
     interaction: { mode: "index", intersect: false },
     plugins: { legend: { position: "top" } },
     scales: {
-      y: { stacked: true, beginAtZero: true },
+      /* keep bars stacked, but ONLY those datasets that share
+         stack="feeds" – the two line series are left un-stacked      */
+      y: { stacked: false, beginAtZero: true },
     },
   };
 
