@@ -13,32 +13,35 @@ import {
 import { accentColor } from "../../../theme.js";
 
 ChartJS.register(
-  CategoryScale, LinearScale,
-  PointElement,  LineElement,
-  Title, Tooltip, Legend
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
 );
 
 export default function WeightChart({
   labels = [],
-  weights = [],
-  normal  = [],         // expected (≈50 th percentile)
-  over    = [],         // +10 %
-  under   = [],         // –10 %
+  weights = [],  // recorded weights (may contain nulls)
+  normal = [],   // expected (≈50th percentile)
+  over = [],     // +10 %
+  under = [],    // −10 %
 }) {
   const accent = accentColor();
 
   const datasets = [
-    /* recorded weights */
     {
-      label          : "Recorded weight",
-      data           : weights,
-      borderColor    : accent,
-      backgroundColor: accent,
-      tension        : 0.25,
-      pointRadius    : 4,
-      pointHoverRadius:5,
+      label             : "Recorded weight",
+      data              : weights,
+      borderColor       : accent,
+      backgroundColor   : accent,
+      tension           : 0.25,
+      pointRadius       : 4,
+      pointHoverRadius  : 5,
+      spanGaps          : true,    // ← fill gaps so line is continuous
     },
-    /* expected */
     {
       label       : "Normal range centre",
       data        : normal,
@@ -46,21 +49,19 @@ export default function WeightChart({
       tension     : 0.25,
       pointRadius : 0,
     },
-    /* over-weight (+10 %) */
     {
       label       : "Over-weight (≈+10 %)",
       data        : over,
       borderColor : "#dc2626",
-      borderDash  : [4,4],
+      borderDash  : [4, 4],
       tension     : 0.25,
       pointRadius : 0,
     },
-    /* under-weight (-10 %) */
     {
       label       : "Under-weight (≈-10 %)",
       data        : under,
       borderColor : "#f59e0b",
-      borderDash  : [4,4],
+      borderDash  : [4, 4],
       tension     : 0.25,
       pointRadius : 0,
     },
@@ -71,10 +72,10 @@ export default function WeightChart({
   const options = {
     responsive         : true,
     maintainAspectRatio: false,
-    plugins            : { legend:{ position:"top" } },
+    plugins            : { legend: { position: "top" } },
     scales             : {
-      x: { title:{ display:true, text:"Date" } },
-      y: { title:{ display:true, text:"Grams" } },
+      x: { title: { display: true, text: "Date" } },
+      y: { title: { display: true, text: "Grams" } },
     },
   };
 
