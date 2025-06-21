@@ -1,15 +1,18 @@
 import React, { useEffect, useState } from "react";
 import {
-  startOfDay, addDays, format,
+  startOfDay,
+  addDays,
+  format,
   differenceInCalendarDays,
 } from "date-fns";
 
-import Header          from "../../../components/Header.jsx";
-import api             from "../api.js";
-import DayCard         from "../components/DayCard.jsx";
-import AllDaysChart    from "../components/AllDaysChart.jsx";
-import FeedCountChart  from "../components/FeedCountChart.jsx";
-import { loadConfig }  from "../../../config.js";
+import Header            from "../../../components/Header.jsx";
+import api               from "../api.js";
+import DayCard           from "../components/DayCard.jsx";
+import AllDaysChart      from "../components/AllDaysChart.jsx";
+import FeedCountChart    from "../components/FeedCountChart.jsx";
+import NightGapChart     from "../components/NightGapChart.jsx";   // 👈 NEW
+import { loadConfig }    from "../../../config.js";
 import { ORDER as FEED_TYPES } from "../../../feedTypes.js";
 
 const DAYS_PER_PAGE = 50;
@@ -20,12 +23,12 @@ export default function MilkingHistory() {
                               : startOfDay(new Date());
   const today    = startOfDay(new Date());
 
-  const [page,         setPage]  = useState(0);
-  const [recs,         setRecs]  = useState([]);
-  const [feedsByDay,   setData]  = useState({});
-  const [err,          setErr]   = useState("");
+  const [page,         setPage]   = useState(0);
+  const [recs,         setRecs]   = useState([]);
+  const [feedsByDay,   setData]   = useState({});
+  const [err,          setErr]    = useState("");
   const [loading,      setLoading] = useState(false);
-  const [done,         setDone]  = useState(false);
+  const [done,         setDone]   = useState(false);
 
   /* ---- once: recommendation table -------------------------------- */
   useEffect(() => {
@@ -62,23 +65,56 @@ export default function MilkingHistory() {
   const ordered = Object.values(feedsByDay)
                         .sort((a, b) => b.date - a.date);  // newest first
 
-  const labels      = [];
-  const recommended = [];
-  const feedCounts  = [];
-  const stacks      = Object.fromEntries(FEED_TYPES.map(t => [t, []]));
+  const labels       = [];
+  const recommended  = [];
+  const feedCounts   = [];
+  const nightGaps    = [];                                // 👈 NEW
+  const stacks       = Object.fromEntries(FEED_TYPES.map(t => [t, []]));
 
   ordered.forEach(({ date, rows }) => {
     labels.push(format(date, "d LLL"));
+
+    /* recommendation for this age */
     const age = differenceInCalendarDays(date, birthDay);
     recommended.push(
       recs.find(r => r.ageDays === age)?.totalMl ?? 0,
     );
 
-    feedCounts.push(rows.length);          // feeds per day
+    /* number of feeds */
+    feedCounts.push(rows.length);
 
+    /* sum ml per feed-type (stack chart) */
     const sums = Object.fromEntries(FEED_TYPES.map(t => [t, 0]));
     rows.forEach(f => { sums[f.feedingType] += f.amountMl; });
     FEED_TYPES.forEach(t => stacks[t].push(sums[t]));
+
+    /* ---------- longest gap without feeds (hours) ---------------- */
+    const dayStart = startOfDay(date);
+    const dayEnd   = addDays(dayStart, 1);
+    let maxGapMs   = rows.length === 0 ? (dayEnd - dayStart) : 0;
+
+    if (rows.length > 0) {
+      const feedsAsc = [...rows].sort((a, b) =>
+        new Date(a.fedAt) - new Date(b.fedAt),
+      );
+
+      /* gap from day start to first feed */
+      maxGapMs = Math.max(maxGapMs, new Date(feedsAsc[0].fedAt) - dayStart);
+
+      /* gaps between successive feeds */
+      for (let i = 1; i < feedsAsc.length; i++) {
+        const gap = new Date(feedsAsc[i].fedAt) - new Date(feedsAsc[i - 1].fedAt);
+        if (gap > maxGapMs) maxGapMs = gap;
+      }
+
+      /* gap from last feed to day end */
+      maxGapMs = Math.max(
+        maxGapMs,
+        dayEnd - new Date(feedsAsc[feedsAsc.length - 1].fedAt),
+      );
+    }
+
+    nightGaps.push(+((maxGapMs / 3_600_000).toFixed(1))); // hours → 1-dp
   });
 
   /* ---- UI -------------------------------------------------------- */
@@ -101,6 +137,12 @@ export default function MilkingHistory() {
             <FeedCountChart
               labels={labels}
               counts={feedCounts}
+            />
+
+            {/* NEW – longest gap chart */}
+            <NightGapChart
+              labels={labels}
+              gaps={nightGaps}
             />
           </>
         )}
