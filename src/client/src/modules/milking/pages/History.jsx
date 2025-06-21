@@ -11,40 +11,53 @@ import api               from "../api.js";
 import DayCard           from "../components/DayCard.jsx";
 import AllDaysChart      from "../components/AllDaysChart.jsx";
 import FeedCountChart    from "../components/FeedCountChart.jsx";
-import NightGapChart     from "../components/NightGapChart.jsx";   // 👈 NEW
+import NightGapChart     from "../components/NightGapChart.jsx";
 import { loadConfig }    from "../../../config.js";
 import { ORDER as FEED_TYPES } from "../../../feedTypes.js";
 
 const DAYS_PER_PAGE = 50;
 
 export default function MilkingHistory() {
+  /* ----------------------------------------------------------------
+   *  Birth date (for age-based recommendations)
+   * ---------------------------------------------------------------- */
   const { birthTs: birthTsRaw } = loadConfig();
   const birthDay = birthTsRaw ? startOfDay(new Date(birthTsRaw))
                               : startOfDay(new Date());
   const today    = startOfDay(new Date());
 
-  const [page,         setPage]   = useState(0);
-  const [recs,         setRecs]   = useState([]);
-  const [feedsByDay,   setData]   = useState({});
-  const [err,          setErr]    = useState("");
+  /* ----------------------------------------------------------------
+   *  State
+   * ---------------------------------------------------------------- */
+  const [page,         setPage]    = useState(0);
+  const [recs,         setRecs]    = useState([]);
+  const [feedsByDay,   setData]    = useState({});
+  const [err,          setErr]     = useState("");
   const [loading,      setLoading] = useState(false);
-  const [done,         setDone]   = useState(false);
+  const [done,         setDone]    = useState(false);
 
-  /* ---- once: recommendation table -------------------------------- */
+  /* ----------------------------------------------------------------
+   *  Fetch static recommendation table once
+   * ---------------------------------------------------------------- */
   useEffect(() => {
     api.listRecs().then(setRecs).catch(e => setErr(e.message));
   }, []);
 
-  /* ---- paged loader birth → today -------------------------------- */
+  /* ----------------------------------------------------------------
+   *  Paged loader: birth-day → today, 50 calendar days per page
+   * ---------------------------------------------------------------- */
   useEffect(() => {
     if (done) return;
+
     (async () => {
       setLoading(true);
       const batch = [];
+
       for (let i = 0; i < DAYS_PER_PAGE; i++) {
         const offset = page * DAYS_PER_PAGE + i;
         const date   = addDays(birthDay, offset);
         if (date > today) { setDone(true); break; }
+
         const dayStr = format(date, "yyyy-MM-dd");
         batch.push(
           api.listFeeds(dayStr)
@@ -52,74 +65,112 @@ export default function MilkingHistory() {
              .catch(()  => ({ dayStr, date, rows: [] }))
         );
       }
+
       const res = await Promise.all(batch);
-      setData(prev => Object.fromEntries([
-        ...Object.entries(prev),
-        ...res.map(r => [r.dayStr, r]),
-      ]));
+      setData(prev =>
+        Object.fromEntries([
+          ...Object.entries(prev),
+          ...res.map(r => [r.dayStr, r]),
+        ]),
+      );
       setLoading(false);
     })();
   }, [page, done, birthDay, today]);
 
-  /* ---- build arrays for the timeline charts ---------------------- */
+  /* ----------------------------------------------------------------
+   *  Build arrays for the timeline charts
+   * ---------------------------------------------------------------- */
   const ordered = Object.values(feedsByDay)
                         .sort((a, b) => b.date - a.date);  // newest first
 
-  const labels       = [];
-  const recommended  = [];
-  const feedCounts   = [];
-  const sleepHours   = []; 
-  const stacks       = Object.fromEntries(FEED_TYPES.map(t => [t, []]));
+  const labels      = [];
+  const recommended = [];
+  const feedCounts  = [];
+  const sleepHours  = [];      // longest 20:00-08:00 stretch, null = skip
+  const stacks      = Object.fromEntries(FEED_TYPES.map(t => [t, []]));
 
   ordered.forEach(({ date, rows }) => {
     labels.push(format(date, "d LLL"));
 
-    /* recommendation for this age */
+    /* age-specific recommended daily total */
     const age = differenceInCalendarDays(date, birthDay);
     recommended.push(
       recs.find(r => r.ageDays === age)?.totalMl ?? 0,
     );
 
-    /* number of feeds */
+    /* feeds per day */
     feedCounts.push(rows.length);
 
-    /* sum ml per feed-type (stack chart) */
+    /* cumulative ml per feed-type for stacked chart */
     const sums = Object.fromEntries(FEED_TYPES.map(t => [t, 0]));
     rows.forEach(f => { sums[f.feedingType] += f.amountMl; });
     FEED_TYPES.forEach(t => stacks[t].push(sums[t]));
 
-    /* ---------- longest *sleep-time* window (hours) -------------- */
-    const dayStart = startOfDay(date);
-    const dayEnd   = addDays(dayStart, 1);
-    let maxGapMs   = rows.length === 0 ? (dayEnd - dayStart) : 0;
+    /* --------------------------------------------------------------
+     *  Longest “sleep-time” window (20:00 → 08:00)
+     * -------------------------------------------------------------- */
+    const nightStart = new Date(date);          // 20:00 same calendar day
+    nightStart.setHours(20, 0, 0, 0);
 
-    if (rows.length > 0) {
-      const feedsAsc = [...rows].sort((a, b) =>
-        new Date(a.fedAt) - new Date(b.fedAt),
-      );
+    const nightEnd = new Date(nightStart);      // 08:00 next day
+    nightEnd.setDate(nightEnd.getDate() + 1);
+    nightEnd.setHours(8, 0, 0, 0);
 
-      /* gap from day start to first feed */
-      maxGapMs = Math.max(maxGapMs, new Date(feedsAsc[0].fedAt) - dayStart);
+    /* collect feeds that fall into the night window — may span two
+       calendar days, so pull rows of the next day too (if loaded) */
+    const nextIso = format(addDays(date, 1), "yyyy-MM-dd");
+    const nightFeeds = [
+      ...rows,
+      ...(feedsByDay[nextIso]?.rows ?? []),
+    ].filter(f => {
+      const t = new Date(f.fedAt);
+      return t >= nightStart && t <= nightEnd;
+    });
 
-      /* gaps between successive feeds */
-      for (let i = 1; i < feedsAsc.length; i++) {
-        const gap = new Date(feedsAsc[i].fedAt) - new Date(feedsAsc[i - 1].fedAt);
-        if (gap > maxGapMs) maxGapMs = gap;
+    /* if *absolutely no* feeds in entire 24 h => treat as “no data” */
+    const hasAnyFeedsToday = rows.length > 0 ||
+                             (feedsByDay[nextIso]?.rows?.length ?? 0) > 0;
+
+    if (!hasAnyFeedsToday) {
+      sleepHours.push(null);
+    } else {
+      /* compute longest gap inside 20:00-08:00 */
+      let maxGapMs = nightFeeds.length === 0
+        ? nightEnd - nightStart                       // slept whole night
+        : 0;
+
+      if (nightFeeds.length > 0) {
+        const asc = nightFeeds.sort(
+          (a, b) => new Date(a.fedAt) - new Date(b.fedAt),
+        );
+
+        /* start → first feed */
+        maxGapMs = Math.max(maxGapMs, new Date(asc[0].fedAt) - nightStart);
+
+        /* between feeds */
+        for (let i = 1; i < asc.length; i++) {
+          const gap = new Date(asc[i].fedAt) - new Date(asc[i - 1].fedAt);
+          if (gap > maxGapMs) maxGapMs = gap;
+        }
+
+        /* last feed → end */
+        maxGapMs = Math.max(
+          maxGapMs,
+          nightEnd - new Date(asc[asc.length - 1].fedAt),
+        );
       }
 
-      /* gap from last feed to day end */
-      maxGapMs = Math.max(
-        maxGapMs,
-        dayEnd - new Date(feedsAsc[feedsAsc.length - 1].fedAt),
-      );
-    }
+      const hrs = +(maxGapMs / 3_600_000).toFixed(1);   // 1 decimal
 
-    const hrs = maxGapMs / 3_600_000;
-    /* if the whole 24 h are blank, treat it as “no data” (null) */
-    sleepHours.push(hrs >= 23.99 ? null : +hrs.toFixed(1));
+      /* hide current (still unfolding) day */
+      const todayStart = startOfDay(new Date());
+      sleepHours.push(date.getTime() === todayStart.getTime() ? null : hrs);
+    }
   });
 
-  /* ---- UI -------------------------------------------------------- */
+  /* ----------------------------------------------------------------
+   *  Render
+   * ---------------------------------------------------------------- */
   return (
     <>
       <Header />
@@ -129,6 +180,7 @@ export default function MilkingHistory() {
       <main>
         {labels.length > 0 && (
           <>
+            {/* stacked ml per day */}
             <AllDaysChart
               labels={labels}
               stacks={stacks}
@@ -141,7 +193,7 @@ export default function MilkingHistory() {
               counts={feedCounts}
             />
 
-            {/* NEW – longest sleep-time chart */}
+            {/* longest sleep-time curve */}
             <NightGapChart
               labels={labels}
               gaps={sleepHours}
@@ -149,6 +201,7 @@ export default function MilkingHistory() {
           </>
         )}
 
+        {/* per-day collapsible cards */}
         {ordered.map(({ dayStr, date, rows }) => (
           <DayCard
             key={dayStr}
@@ -190,6 +243,7 @@ export default function MilkingHistory() {
           />
         ))}
 
+        {/* pagination control */}
         <div style={{ textAlign: "center", margin: "1.5rem 0" }}>
           {loading ? (
             <p>Loading…</p>
