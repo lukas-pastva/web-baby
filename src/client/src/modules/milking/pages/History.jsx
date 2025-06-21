@@ -68,7 +68,7 @@ export default function MilkingHistory() {
   const labels       = [];
   const recommended  = [];
   const feedCounts   = [];
-  const nightGaps    = [];                                // 👈 NEW
+  const sleepHours   = []; 
   const stacks       = Object.fromEntries(FEED_TYPES.map(t => [t, []]));
 
   ordered.forEach(({ date, rows }) => {
@@ -88,7 +88,7 @@ export default function MilkingHistory() {
     rows.forEach(f => { sums[f.feedingType] += f.amountMl; });
     FEED_TYPES.forEach(t => stacks[t].push(sums[t]));
 
-    /* ---------- longest gap without feeds (hours) ---------------- */
+    /* ---------- longest *sleep-time* window (hours) -------------- */
     const dayStart = startOfDay(date);
     const dayEnd   = addDays(dayStart, 1);
     let maxGapMs   = rows.length === 0 ? (dayEnd - dayStart) : 0;
@@ -114,7 +114,9 @@ export default function MilkingHistory() {
       );
     }
 
-    nightGaps.push(+((maxGapMs / 3_600_000).toFixed(1))); // hours → 1-dp
+    const hrs = maxGapMs / 3_600_000;
+    /* if the whole 24 h are blank, treat it as “no data” (null) */
+    sleepHours.push(hrs >= 23.99 ? null : +hrs.toFixed(1));
   });
 
   /* ---- UI -------------------------------------------------------- */
@@ -139,10 +141,10 @@ export default function MilkingHistory() {
               counts={feedCounts}
             />
 
-            {/* NEW – longest gap chart */}
+            {/* NEW – longest sleep-time chart */}
             <NightGapChart
               labels={labels}
-              gaps={nightGaps}
+              gaps={sleepHours}
             />
           </>
         )}

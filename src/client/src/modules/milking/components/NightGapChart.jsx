@@ -22,11 +22,7 @@ ChartJS.register(
   Legend,
 );
 
-/**
- * Simple line-chart of the longest “no-feed” gap per calendar day.
- * • `labels` – array of short day labels (“23 Apr”, …)  
- * • `gaps`   – matching array of gap lengths **in hours** (number)
- */
+/** Longest uninterrupted *sleep-time* per day (hours). */
 export default function NightGapChart({ labels = [], gaps = [] }) {
   const accent = accentColor();
 
@@ -34,14 +30,14 @@ export default function NightGapChart({ labels = [], gaps = [] }) {
     labels,
     datasets: [
       {
-        label          : "Longest gap without feeds (h)",
-        data           : gaps,
-        borderColor    : accent,
-        backgroundColor: accent,
-        tension        : 0.25,
-        pointRadius    : 4,
+        label           : "Sleep time (h)",
+        data            : gaps,            // nulls → “holes” on no-data days
+        borderColor     : accent,
+        backgroundColor : accent,
+        tension         : 0.25,
+        pointRadius     : 4,
         pointHoverRadius: 5,
-        spanGaps       : true,
+        spanGaps        : true,
       },
     ],
   };
@@ -62,7 +58,7 @@ export default function NightGapChart({ labels = [], gaps = [] }) {
 
   return (
     <div className="card" style={{ height: 260 }}>
-      <h3>Longest gap without feeds (hours)</h3>
+      <h3>Longest sleep time (hours)</h3>
       <Line data={data} options={options} />
     </div>
   );
