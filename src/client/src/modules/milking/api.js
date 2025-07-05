@@ -4,7 +4,7 @@
 async function json(promise) {
   const r = await promise;
   if (r.status === 204) return null;          // no-content
-  if (r.ok) return r.json();
+  if (r.ok)            return r.json();
   throw new Error(`HTTP ${r.status} – ${await r.text()}`);
 }
 
@@ -24,16 +24,26 @@ function tzOffsetString(date = new Date()) {
 /*  API surface ------------------------------------------------------ */
 /* ------------------------------------------------------------------ */
 export default {
-  /* recommendations */
+  /* daily recommendations */
   listRecs () {
     return json(fetch("/api/milking/recommendations"));
   },
 
+  /* last feed, any date */
   latestFeed () {
     return json(fetch("/api/milking/feeds/last"));
   },
 
-  /* feeds for one calendar day ------------------------------------- */
+  /* full-range daily summary (fast, used by History charts) */
+  listDaySummaries(from = null, to = null) {
+    const qs = [];
+    if (from) qs.push(`from=${from}`);
+    if (to)   qs.push(`to=${to}`);
+    const query = qs.length ? "?" + qs.join("&") : "";
+    return json(fetch(`/api/milking/days/summary${query}`));
+  },
+
+  /* feeds for **one** calendar day --------------------------------- */
   listFeeds(day) {
     const tz      = tzOffsetString();
     const fromIso = `${day}T00:00:00${tz}`;
