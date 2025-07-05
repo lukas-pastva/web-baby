@@ -16,6 +16,7 @@ import NightGapChart     from "../components/NightGapChart.jsx";
 import { loadConfig }    from "../../../config.js";
 import { ORDER as FEED_TYPES } from "../../../feedTypes.js";
 
+/* how many days to fetch in one “page” of the timeline */
 const DAYS_PER_PAGE = 50;                      // list paging size
 
 export default function MilkingHistory() {
@@ -28,14 +29,14 @@ export default function MilkingHistory() {
   const today    = startOfDay(new Date());
 
   /* -------------------------------------------------------------- */
-  /*  State                                                          */
+  /*  State                                                         */
   /* -------------------------------------------------------------- */
   const [recs,      setRecs     ] = useState([]);
-  const [summary,   setSummary  ] = useState([]);   // one object per day (all days)
+  const [summary,   setSummary  ] = useState([]);          // immutable – for charts
   const [err,       setErr      ] = useState("");
 
-  /* paged day-card data */
-  const [page,      setPage     ] = useState(0);    // 0 = newest 50 days
+  /* paged feed-data for the collapsible DayCards */
+  const [page,      setPage     ] = useState(0);           // 0 = newest DAYS_PER_PAGE days
   const [feedsByDay,setFeeds    ] = useState({});
   const [loading,   setLoading  ] = useState(false);
   const [done,      setDone     ] = useState(false);
@@ -51,49 +52,57 @@ export default function MilkingHistory() {
   }, []);
 
   /* -------------------------------------------------------------- */
-  /*  Progressive loader – list only (infinite scroll)              */
+  /*  Progressive loader – **sequential** fetch to avoid 50 parallel
+      requests exhausting Chrome’s connection/memory pool           */
   /* -------------------------------------------------------------- */
   useEffect(() => {
     if (done) return;
 
-    /* current page already being fetched? */
-    setLoading(true);
-
     (async () => {
-      const batch = [];
+      setLoading(true);
+
+      const batch = {};
 
       for (let i = 0; i < DAYS_PER_PAGE; i++) {
         const offset = page * DAYS_PER_PAGE + i;
-        const date   = subDays(today, offset);        // newest-first
-        if (date < birthDay) { setDone(true); break; }
+        const date   = subDays(today, offset);             // newest-first
+
+        /* reached the birth date? stop paging */
+        if (date < birthDay) {
+          setDone(true);
+          break;
+        }
 
         const dayStr = format(date, "yyyy-MM-dd");
-        batch.push(
-          api.listFeeds(dayStr)
-             .then(rows => ({ dayStr, date, rows }))
-             .catch(()  => ({ dayStr, date, rows: [] }))
-        );
+
+        try {
+          /* ⬇️  sequential await – one network request at a time */
+          const rows = await api.listFeeds(dayStr);
+          batch[dayStr] = { dayStr, date, rows };
+        } catch {
+          /* silent fail → empty day */
+          batch[dayStr] = { dayStr, date, rows: [] };
+        }
       }
 
-      const res = await Promise.all(batch);
-      setFeeds(prev =>
-        Object.fromEntries([
-          ...Object.entries(prev),
-          ...res.map(r => [r.dayStr, r]),
-        ]),
-      );
+      /* merge the freshly fetched slice */
+      setFeeds(prev => ({ ...prev, ...batch }));
       setLoading(false);
     })();
-  }, [page, done, birthDay, today]);
+  }, [page, done, today, birthDay]);
 
   /* IntersectionObserver – advance page when sentinel enters view */
   useEffect(() => {
     if (done) return;
-    const io = new IntersectionObserver(entries => {
-      if (entries[0].isIntersecting && !loading) {
-        setPage(p => p + 1);
-      }
-    }, { rootMargin: "300px" });
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !loading) {
+          setPage((p) => p + 1);
+        }
+      },
+      { rootMargin: "300px" },
+    );
+
     if (sentinel.current) io.observe(sentinel.current);
     return () => io.disconnect();
   }, [done, loading]);
@@ -179,30 +188,30 @@ export default function MilkingHistory() {
             onUpdate={(id, p) =>
               api.updateFeed(id, p)
                  .then(() =>
-                   setFeeds(d => ({
+                   setFeeds((d) => ({
                      ...d,
                      [dayStr]: {
                        ...d[dayStr],
-                       rows: d[dayStr].rows.map(r =>
+                       rows: d[dayStr].rows.map((r) =>
                          r.id === id ? { ...r, ...p } : r,
                        ),
                      },
                    })),
                  )
-                 .catch(e => setErr(e.message))
+                 .catch((e) => setErr(e.message))
             }
-            onDelete={id =>
+            onDelete={(id) =>
               api.deleteFeed(id)
                  .then(() =>
-                   setFeeds(d => ({
+                   setFeeds((d) => ({
                      ...d,
                      [dayStr]: {
                        ...d[dayStr],
-                       rows: d[dayStr].rows.filter(r => r.id !== id),
+                       rows: d[dayStr].rows.filter((r) => r.id !== id),
                      },
                    })),
                  )
-                 .catch(e => setErr(e.message))
+                 .catch((e) => setErr(e.message))
             }
           />
         ))}
