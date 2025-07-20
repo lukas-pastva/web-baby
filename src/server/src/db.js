@@ -24,12 +24,12 @@ function buildDbUrl() {
 
   const user = encodeURIComponent(DB_USER);
   const pass = encodeURIComponent(DB_PASSWORD);
-  return `mariadb://${user}:${pass}@${DB_HOST}:${DB_PORT}/${DB_NAME}`;
+  return `mysql://${user}:${pass}@${DB_HOST}:${DB_PORT}/${DB_NAME}`;
 }
 
 /* Shared Sequelize instance */
 const db = new Sequelize(buildDbUrl(), {
-  dialect : "mariadb",
+  dialect : "mysql",
   logging : false,
 });
 
