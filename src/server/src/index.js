@@ -10,6 +10,10 @@ import { syncAll }    from "./modules/milking/seed.js";
 import weightRoutes   from "./modules/weight/routes.js";
 import { syncWeight } from "./modules/weight/seed.js";
 
+/* NEW – height */
+import heightRoutes   from "./modules/height/routes.js";
+import { syncHeight } from "./modules/height/seed.js";
+
 /* config (theme / palette / etc.) */
 import configRoutes   from "./modules/config/routes.js";
 import { syncConfig } from "./modules/config/seed.js";
@@ -26,8 +30,9 @@ dotenv.config();
 await Promise.all([
   syncAll(),      // milking
   syncWeight(),   // weight
+  syncHeight(),   // height  ← NEW
   syncConfig(),   // app config
-  syncNotes(),    // notes  ← NEW
+  syncNotes(),    // notes
 ]);
 
 const app  = express();
@@ -40,8 +45,9 @@ app.use(express.json());
 /* REST API */
 app.use(milkingRoutes);
 app.use(weightRoutes);
+app.use(heightRoutes);   /* ← NEW */
 app.use(configRoutes);
-app.use(noteRoutes);       /* ← NEW */
+app.use(noteRoutes);
 
 /* static SPA (built by Vite) */
 const __dirname = path.dirname(fileURLToPath(import.meta.url));

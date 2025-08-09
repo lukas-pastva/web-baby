@@ -12,7 +12,7 @@ export default function HelpPage() {
 
           <p>
             Web-Baby is a tiny <strong>React + Express</strong> app that lets
-            new parents log feeds, track weight, jot down notes and more – all
+            new parents log feeds, track <strong>weight</strong> &amp; <strong>height</strong>, jot down notes and more – all
             in a single container you can self-host anywhere.
           </p>
 
@@ -21,6 +21,7 @@ export default function HelpPage() {
             <li><strong>Today</strong> – quick feed entry; stacked bar shows <em>types + total</em>.</li>
             <li><strong>All days</strong> – full timeline since birth with two overview charts.</li>
             <li><strong>Weight</strong> – record &amp; visualise daily weight against WHO medians.</li>
+            <li><strong>Height</strong> – record &amp; visualise daily height against WHO medians.</li>
             <li><strong>Notes</strong> – dated free-text notes (vaccinations, milestones, anything).</li>
             <li><strong>Config</strong> – theme, birth details, hidden feed types.</li>
             <li><strong>Help</strong> – you’re here!</li>
@@ -38,6 +39,7 @@ export default function HelpPage() {
               <tr><td><kbd>N</kbd></td><td>Notes</td></tr>
               <tr><td><kbd>C</kbd></td><td>Config</td></tr>
               <tr><td><kbd>H</kbd></td><td>Help</td></tr>
+              {/* No default shortcut for Height to avoid clashing with Help */}
             </tbody>
           </table>
 
@@ -49,7 +51,7 @@ export default function HelpPage() {
           <p><strong>❓ Where is my data kept?</strong><br/>
              Everything lives in a single MariaDB / MySQL database. The Docker
              image ships with migrations that auto-create the tables on first
-             run (including the new <code>note_entries</code> table).</p>
+             run (including the <code>note_entries</code>, <code>weight_entries</code> and <code>height_entries</code> tables).</p>
 
           <p><strong>Need more help?</strong> Open an issue on GitHub – PRs and
              questions welcome 🙂</p>

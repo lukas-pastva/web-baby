@@ -1,7 +1,7 @@
 # Web-Baby 👶🍼
 
 A lightweight full-stack app that helps new parents **log, visualise and
-annotate** their baby’s daily life — milk intake, weight -- and now free-form
+annotate** their baby’s daily life — milk intake, **weight**, **height** — and now free-form
 **notes** (vaccinations, milestones, probiotics …).
 
 | Variable          | Required | Example                                   |
@@ -23,6 +23,7 @@ annotate** their baby’s daily life — milk intake, weight -- and now free-for
 | **Today**     | Log feeds, see stacked chart and running total for the current day.      |
 | **All days**  | Infinite-scroll timeline with per-day collapsible cards + two charts.    |
 | **Weight**    | Record daily weight, view chart against WHO growth standards.            |
+| **Height**    | Record daily height (cm), view chart against WHO growth standards.       |
 | **Notes**     | Free-text dated notes (vaccinations, supplements, milestones …).         |
 | **Config**    | Accent colour (boy / girl), light/dark/auto mode, birth details, hide feed types. |
 | **Help**      | App overview, shortcuts and FAQ.                                         |
@@ -40,3 +41,4 @@ npm run dev      # http://localhost:5173  (proxy → 8080)
 cd ../server
 npm i
 PORT=8080 node src/index.js
+```

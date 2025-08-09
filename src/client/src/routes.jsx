@@ -5,6 +5,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 const MilkingDashboard = lazy(() => import("./modules/milking/pages/Dashboard.jsx"));
 const MilkingHistory   = lazy(() => import("./modules/milking/pages/History.jsx"));
 const WeightDashboard  = lazy(() => import("./modules/weight/pages/Dashboard.jsx"));
+const HeightDashboard  = lazy(() => import("./modules/height/pages/Dashboard.jsx"));
 const NotesPage        = lazy(() => import("./modules/notes/components/NotesPage.jsx"));
 const HelpPage         = lazy(() => import("./modules/help/Help.jsx"));
 const ConfigPage       = lazy(() => import("./modules/config/Config.jsx"));
@@ -18,7 +19,8 @@ export default function AppRoutes() {
           <Route path="/milking"     element={<MilkingDashboard />} />
           <Route path="/milking/all" element={<MilkingHistory />} />
           <Route path="/weight"      element={<WeightDashboard />} />
-          <Route path="/notes"       element={<NotesPage />} />          {/* 👈 */}
+          <Route path="/height"      element={<HeightDashboard />} />
+          <Route path="/notes"       element={<NotesPage />} />
           <Route path="/help"        element={<HelpPage />} />
           <Route path="/config"      element={<ConfigPage />} />
         </Routes>
