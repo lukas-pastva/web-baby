@@ -1,18 +1,21 @@
 import { Recommendation, Feed } from "./model.js";
 
 /**
- * Build 90-day recommendation rows, each including:
+ * Build 365-day recommendation rows, each including:
  *   • total ml per day
  *   • meals per day
- *   • NEW: ml per single meal (rounded)
+ *   • ml per single meal (rounded)
+ *
+ * NOTE: These are generic age-based guidelines used for charts/history.
+ *       The Dashboard uses a personalized endpoint for today's value.
  */
 function buildRecommendations() {
   const rows = [];
 
-  for (let ageDays = 0; ageDays < 90; ageDays++) {
+  for (let ageDays = 0; ageDays < 365; ageDays++) {
     let totalMl, mealsPerDay;
 
-    /* explicit first-week values */
+    /* explicit first-week values (same as before) */
     switch (ageDays) {
       case 0: totalMl = 60;  mealsPerDay = 8; break;
       case 1: totalMl = 90;  mealsPerDay = 8; break;
@@ -23,20 +26,26 @@ function buildRecommendations() {
       case 6: totalMl = 400; mealsPerDay = 6; break;
       case 7: totalMl = 450; mealsPerDay = 6; break;
 
-      /* piece-wise linear ramp-up for days 8-89 */
       default:
-        if (ageDays <= 30) {               // 8-30 d
+        if (ageDays <= 30) {               // 8-30 d (ramp)
           const p = (ageDays - 7) / (30 - 7);
           totalMl     = Math.round(450 + p * (650 - 450));
           mealsPerDay = 7;
-        } else if (ageDays <= 60) {        // 31-60 d
+        } else if (ageDays <= 60) {        // 31-60 d (ramp)
           const p = (ageDays - 30) / (60 - 30);
           totalMl     = Math.round(650 + p * (800 - 650));
           mealsPerDay = 6;
-        } else {                           // 61-89 d
+        } else if (ageDays <= 90) {        // 61-90 d (ramp)
           const p = (ageDays - 60) / (90 - 60);
           totalMl     = Math.round(800 + p * (900 - 800));
           mealsPerDay = 5;
+        } else if (ageDays <= 180) {       // 3–6 months: plateau ~900 ml
+          totalMl     = 900;
+          mealsPerDay = 5;
+        } else {                           // 6–12 months: gradual taper to ~750 ml
+          const p = (ageDays - 180) / (365 - 180);
+          totalMl     = Math.round(900 + p * (750 - 900)); // 900 → 750
+          mealsPerDay = 4;
         }
     }
 
@@ -51,7 +60,6 @@ function buildRecommendations() {
 /*  Public – called once on server start                              */
 /* ------------------------------------------------------------------ */
 export async function syncAll() {
-  /* `alter:true` adds the new column if the table already exists */
   await Promise.all([Recommendation.sync({ alter:true }), Feed.sync()]);
 
   if (await Recommendation.count() === 0) {

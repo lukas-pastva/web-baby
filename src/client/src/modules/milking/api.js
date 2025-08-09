@@ -24,9 +24,14 @@ function tzOffsetString(date = new Date()) {
 /*  API surface ------------------------------------------------------ */
 /* ------------------------------------------------------------------ */
 export default {
-  /* daily recommendations */
+  /* daily recommendations table (generic) */
   listRecs () {
     return json(fetch("/api/milking/recommendations"));
+  },
+
+  /* personalized recommendation for **today** */
+  todayRec () {
+    return json(fetch("/api/milking/recommendation/today"));
   },
 
   /* last feed, any date */

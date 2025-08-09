@@ -4,7 +4,7 @@ import {
   format,
   differenceInCalendarDays,
   differenceInMinutes,
-  subDays,                              // ← NEW
+  subDays,
 } from "date-fns";
 
 import Header        from "../../../components/Header.jsx";
@@ -25,9 +25,12 @@ export default function MilkingDashboard() {
   const [date]        = useState(startOfToday());   // today never changes mid-render
   const [feeds,  setFeeds ]        = useState([]);
   const [feedsY, setFeedsY]        = useState([]);  // ← yesterday
-  const [recs,   setRecs  ]        = useState([]);
   const [last,   setLast  ]        = useState(null);
   const [err,    setErr   ]        = useState("");
+
+  /* personalized recommendation for today */
+  const [recToday, setRecToday] = useState(0);
+  const [recPer,   setRecPer  ] = useState(0);
 
   /* tick every minute to refresh banner calculations */
   const [now, setNow] = useState(new Date());
@@ -52,23 +55,21 @@ export default function MilkingDashboard() {
   const reloadLast = () =>
     api.latestFeed().then(setLast).catch(e => setErr(e.message));
 
-  useEffect(() => { reloadFeeds(); reloadFeedsY(); reloadLast(); }, []);
+  const reloadRec = () =>
+    api.todayRec()
+       .then(r => {
+         setRecToday(r?.totalMl || 0);
+         setRecPer(r?.perMealMl || 0);
+       })
+       .catch(() => { setRecToday(0); setRecPer(0); });
+
+  useEffect(() => { reloadFeeds(); reloadFeedsY(); reloadLast(); reloadRec(); }, []);
 
   /* refresh helpers after CRUD */
-  const refreshAll = ()=> { reloadFeeds(); reloadFeedsY(); reloadLast(); };
+  const refreshAll = ()=> { reloadFeeds(); reloadFeedsY(); reloadLast(); reloadRec(); };
   const handleSave   = p        => api.insertFeed(p)   .then(refreshAll).catch(e => setErr(e.message));
   const handleUpdate = (id, p ) => api.updateFeed(id,p).then(refreshAll).catch(e => setErr(e.message));
   const handleDelete =  id      => api.deleteFeed(id)  .then(refreshAll).catch(e => setErr(e.message));
-
-  /* ─── recommendations (once) ───────────────────────────────────── */
-  useEffect(() => {
-    api.listRecs().then(setRecs).catch(e => setErr(e.message));
-  }, []);
-
-  const ageDays   = birthTs ? differenceInCalendarDays(date, birthTs) : null;
-  const recRow    = recs.find(r => r.ageDays === ageDays) || {};
-  const recToday  = recRow.totalMl   ?? 0;
-  const recPer    = recRow.perMealMl ?? 0;
 
   /* time since last feed */
   const lastFeedAt = last ? new Date(last.fedAt) : null;
