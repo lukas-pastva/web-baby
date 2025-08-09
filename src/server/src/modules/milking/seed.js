@@ -6,8 +6,9 @@ import { Recommendation, Feed } from "./model.js";
  *   • meals per day
  *   • ml per single meal (rounded)
  *
- * NOTE: These are generic age-based guidelines used for charts/history.
- *       The Dashboard uses a personalized endpoint for today's value.
+ * These are generic WHO-like age-based guidelines used for charts/history.
+ * The Dashboard uses a personalized endpoint for today's value, but the
+ * "WHO" line and table cell read from this table.
  */
 function buildRecommendations() {
   const rows = [];
@@ -60,9 +61,16 @@ function buildRecommendations() {
 /*  Public – called once on server start                              */
 /* ------------------------------------------------------------------ */
 export async function syncAll() {
+  // Ensure tables exist
   await Promise.all([Recommendation.sync({ alter:true }), Feed.sync()]);
 
-  if (await Recommendation.count() === 0) {
-    await Recommendation.bulkCreate(buildRecommendations());
-  }
+  // Build the desired full set of 365 rows and UPSERT them.
+  // This fixes older databases that only had 90 rows seeded previously.
+  const desired = buildRecommendations();
+
+  // Upsert all rows by primary key (ageDays). MySQL will use
+  // ON DUPLICATE KEY UPDATE; other dialects use appropriate UPSERTs.
+  await Recommendation.bulkCreate(desired, {
+    updateOnDuplicate: ["totalMl", "mealsPerDay", "perMealMl"],
+  });
 }
