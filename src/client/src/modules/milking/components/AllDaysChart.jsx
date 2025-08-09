@@ -31,7 +31,8 @@ const TYPE_META = buildTypeMeta();
 export default function AllDaysChart({
   labels = [],
   stacks = {},      // { FEED_TYPE : [ … ] }
-  recommended = [], // daily recommended totals
+  recommendedWho = [],
+  recommendedPersonal = [],
 }) {
   const accent = accentColor();
 
@@ -64,20 +65,38 @@ export default function AllDaysChart({
     order          : 80,
   });
 
-  /* ───────────────────────────────────────── recommended line */
-  datasets.push({
-    type       : "line",
-    label      : "Recommended",
-    data       : recommended,
-    borderColor: "#9ca3af",
-    borderDash : [4, 4],
-    pointRadius: 2,
-    tension    : 0.25,
-    /* another dedicated stack – keeps it independent           */
-    stack      : "rec",
-    yAxisID    : "y",
-    order      : 90,
-  });
+  /* ───────────────────────────────────────── WHO line */
+  if (recommendedWho?.length) {
+    datasets.push({
+      type       : "line",
+      label      : "WHO recommended",
+      data       : recommendedWho,
+      borderColor: "#9ca3af",
+      borderDash : [4, 4],
+      pointRadius: 2,
+      tension    : 0.25,
+      /* another dedicated stack – keeps it independent           */
+      stack      : "who",
+      yAxisID    : "y",
+      order      : 90,
+    });
+  }
+
+  /* ───────────────────────────────────────── Personalized line */
+  if (recommendedPersonal?.length) {
+    datasets.push({
+      type       : "line",
+      label      : "Personalized",
+      data       : recommendedPersonal,
+      borderColor: "#0ea5e9",   // cyan-500
+      borderDash : [6, 4],
+      pointRadius: 2,
+      tension    : 0.25,
+      stack      : "personal",
+      yAxisID    : "y",
+      order      : 91,
+    });
+  }
 
   /* ───────────────────────────────────────── chart options */
   const data = { labels, datasets };

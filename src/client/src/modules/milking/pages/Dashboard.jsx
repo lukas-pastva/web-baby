@@ -2,9 +2,9 @@ import React, { useEffect, useState } from "react";
 import {
   startOfToday,
   format,
-  differenceInCalendarDays,
   differenceInMinutes,
   subDays,
+  differenceInCalendarDays,
 } from "date-fns";
 
 import Header        from "../../../components/Header.jsx";
@@ -31,6 +31,9 @@ export default function MilkingDashboard() {
   /* personalized recommendation for today */
   const [recToday, setRecToday] = useState(0);
   const [recPer,   setRecPer  ] = useState(0);
+
+  /* WHO recommendation for today */
+  const [whoToday, setWhoToday] = useState(0);
 
   /* tick every minute to refresh banner calculations */
   const [now, setNow] = useState(new Date());
@@ -63,10 +66,20 @@ export default function MilkingDashboard() {
        })
        .catch(() => { setRecToday(0); setRecPer(0); });
 
-  useEffect(() => { reloadFeeds(); reloadFeedsY(); reloadLast(); reloadRec(); }, []);
+  const reloadWho = () =>
+    api.listRecs()
+       .then(rows => {
+         if (!birthTs) return setWhoToday(0);
+         const ageDays = differenceInCalendarDays(date, birthTs);
+         const rec = rows.find(r => r.ageDays === ageDays);
+         setWhoToday(rec?.totalMl || 0);
+       })
+       .catch(() => setWhoToday(0));
+
+  useEffect(() => { reloadFeeds(); reloadFeedsY(); reloadLast(); reloadRec(); reloadWho(); }, []);
 
   /* refresh helpers after CRUD */
-  const refreshAll = ()=> { reloadFeeds(); reloadFeedsY(); reloadLast(); reloadRec(); };
+  const refreshAll = ()=> { reloadFeeds(); reloadFeedsY(); reloadLast(); reloadRec(); reloadWho(); };
   const handleSave   = p        => api.insertFeed(p)   .then(refreshAll).catch(e => setErr(e.message));
   const handleUpdate = (id, p ) => api.updateFeed(id,p).then(refreshAll).catch(e => setErr(e.message));
   const handleDelete =  id      => api.deleteFeed(id)  .then(refreshAll).catch(e => setErr(e.message));
@@ -77,7 +90,7 @@ export default function MilkingDashboard() {
     ? fmtMinutes(differenceInMinutes(now, lastFeedAt))
     : "—";
 
-  /* “target so far today” */
+  /* “target so far today” – uses personalized total */
   let targetSoFar = null;
   if (recToday > 0) {
     const minutesIntoDay = now.getHours() * 60 + now.getMinutes();
@@ -106,15 +119,17 @@ export default function MilkingDashboard() {
         {/* insert form */}
         <FeedForm onSave={handleSave} />
 
-        {/* glance table with restored yesterday row */}
+        {/* glance table with WHO vs Personalized */}
         <section className="card" style={{ marginBottom:"1.5rem" }}>
           <h3 style={{ marginTop:0 }}>Today at a glance</h3>
           <table style={{ width:"100%", borderCollapse:"collapse", lineHeight:1.3 }}>
             <tbody>
-              <tr><td><strong>Didn’t eat for</strong></td><td>{lastFeedAt ? didntEat : <em>No feeds logged yet</em>}</td></tr>
+              <tr><td><strong>Should eat today (WHO)</strong></td><td>{whoToday || "—"}&nbsp;ml</td></tr>
+              <tr><td><strong>Should eat today (personalized)</strong></td><td>{recToday || "—"}&nbsp;ml</td></tr>
               {recPer > 0 && <tr><td><strong>Suggested per feed</strong></td><td>{recPer}&nbsp;ml</td></tr>}
-              {targetSoFar != null && <tr><td><strong>Should have eaten by now</strong></td><td>{targetSoFar}&nbsp;ml</td></tr>}
+              <tr><td><strong>Should have eaten by now</strong></td><td>{targetSoFar != null ? targetSoFar : "—"}&nbsp;ml</td></tr>
               <tr><td><strong>Eaten so far</strong></td><td>{actualSoFar}&nbsp;ml</td></tr>
+              <tr><td><strong>Didn’t eat for</strong></td><td>{lastFeedAt ? didntEat : <em>No feeds logged yet</em>}</td></tr>
               <tr><td><strong>Eaten by now yesterday</strong></td><td>{feedsY.length ? actualY : "—"}&nbsp;ml</td></tr>
             </tbody>
           </table>
