@@ -11,7 +11,7 @@ import HeightForm     from "../components/HeightForm.jsx";
 import HeightTable    from "../components/HeightTable.jsx";
 import HeightChart    from "../components/HeightChart.jsx";
 import { loadConfig } from "../../../config.js";
-import { medianLengthCm } from "../whoLength.js";
+import { medianLengthCm, lengthPercentile } from "../whoLength.js";
 
 /** Expected length from WHO median (absolute cm). */
 function expectedLength(sex, ageDays) {
@@ -61,6 +61,17 @@ export default function HeightDashboard() {
     return { labels: L, H: S, N: M, O: Hi, U: Lo };
   }, [rows, birthDate, sex]);
 
+  /* Latest WHO percentile (if birth date known and at least one row) */
+  const latestPct = useMemo(() => {
+    if (!birthDate || rows.length === 0) return null;
+    const latest = rows[0]; // API returns DESC by date
+    const age = differenceInCalendarDays(new Date(latest.measuredAt), birthDate);
+    if (!Number.isFinite(age) || age < 0) return null;
+    const pct = lengthPercentile(sex, age, latest.heightCm);
+    if (pct === null) return null;
+    return { pct, date: latest.measuredAt, cm: latest.heightCm };
+  }, [rows, birthDate, sex]);
+
   return (
     <>
       <Header />
@@ -68,6 +79,14 @@ export default function HeightDashboard() {
       {err && <p style={{ color:"#c00", padding:"0 1rem" }}>{err}</p>}
 
       <main>
+        {latestPct && (
+          <div className="card" style={{ marginBottom: ".75rem" }}>
+            <h3>WHO percentile</h3>
+            <p style={{ margin: 0 }}>
+              Latest: <strong>{Math.round(latestPct.pct)}th</strong> percentile on {latestPct.date} ({latestPct.cm} cm)
+            </p>
+          </div>
+        )}
         <HeightForm onSave={handleSave} defaultDate={startOfToday()} />
 
         <HeightChart
@@ -77,8 +96,13 @@ export default function HeightDashboard() {
           over={O}
           under={U}
         />
-
-        <HeightTable rows={rows} onUpdate={handleUpdate} onDelete={handleDelete} />
+        <HeightTable
+          rows={rows}
+          sex={sex}
+          birthDate={birthDate}
+          onUpdate={handleUpdate}
+          onDelete={handleDelete}
+        />
       </main>
     </>
   );

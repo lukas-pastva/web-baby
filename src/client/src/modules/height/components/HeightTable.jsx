@@ -1,7 +1,9 @@
 import React, { useState } from "react";
+import { differenceInCalendarDays } from "date-fns";
+import { lengthPercentile } from "../whoLength.js";
 
 /** Editable (inline) list of height entries – one per day. */
-export default function HeightTable({ rows, onUpdate, onDelete }) {
+export default function HeightTable({ rows, onUpdate, onDelete, sex, birthDate }) {
   const [editingId, setEdit] = useState(null);
   const [formVals, setForm]  = useState({ cm:"", datePart:"" });
 
@@ -37,6 +39,7 @@ export default function HeightTable({ rows, onUpdate, onDelete }) {
             <tr>
               <th>Date</th>
               <th>Height&nbsp;(cm)</th>
+              {birthDate && <th>WHO&nbsp;%ile</th>}
               {hasAct && <th></th>}
             </tr>
           </thead>
@@ -46,6 +49,16 @@ export default function HeightTable({ rows, onUpdate, onDelete }) {
                 <tr>
                   <td>{r.measuredAt}</td>
                   <td>{r.heightCm}</td>
+                  {birthDate && (
+                    <td>
+                      {(() => {
+                        const age = differenceInCalendarDays(new Date(r.measuredAt), birthDate);
+                        if (!Number.isFinite(age) || age < 0) return "—";
+                        const pct = lengthPercentile(sex, age, r.heightCm);
+                        return pct === null ? "—" : `${Math.round(pct)}th`;
+                      })()}
+                    </td>
+                  )}
                   {hasAct && (
                     <td style={{ whiteSpace:"nowrap" }}>
                       {onUpdate && (
