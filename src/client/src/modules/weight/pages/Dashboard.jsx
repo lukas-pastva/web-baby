@@ -11,7 +11,7 @@ import WeightForm    from "../components/WeightForm.jsx";
 import WeightTable   from "../components/WeightTable.jsx";
 import WeightChart   from "../components/WeightChart.jsx";
 import { loadConfig } from "../../../config.js";
-import { medianRatio } from "../whoMedian.js";            // ← helper
+import { medianRatio, weightPercentile } from "../whoMedian.js";            // ← helpers
 
 /* ------------------------------------------------------------------ */
 /*  Median-based expectation with smooth rebound                      */
@@ -102,6 +102,17 @@ export default function WeightDashboard() {
     return { labels: L, W: S, N: M, O: Hi, U: Lo };
   }, [weights, birthDate, birthWeight, sex]);
 
+  /* Latest WHO percentile (if birth date known and at least one row) */
+  const latestPct = useMemo(() => {
+    if (!birthDate || weights.length === 0) return null;
+    const latest = weights[0]; // API returns DESC by date
+    const age = differenceInCalendarDays(new Date(latest.measuredAt), birthDate);
+    if (!Number.isFinite(age) || age < 0) return null;
+    const pct = weightPercentile(sex, age, latest.weightGrams);
+    if (pct === null) return null;
+    return { pct, date: latest.measuredAt, g: latest.weightGrams };
+  }, [weights, birthDate, sex]);
+
   /* ---------- render --------------------------------------------- */
   return (
     <>
@@ -110,6 +121,14 @@ export default function WeightDashboard() {
       {err && <p style={{ color:"#c00", padding:"0 1rem" }}>{err}</p>}
 
       <main>
+        {latestPct && (
+          <div className="card" style={{ marginBottom: ".75rem" }}>
+            <h3>WHO percentile</h3>
+            <p style={{ margin: 0 }}>
+              Latest: <strong>{Math.round(latestPct.pct)}th</strong> percentile on {latestPct.date} ({latestPct.g} g)
+            </p>
+          </div>
+        )}
         <WeightForm onSave={handleSave} defaultDate={startOfToday()} />
 
         <WeightChart
