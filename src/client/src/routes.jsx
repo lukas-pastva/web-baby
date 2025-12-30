@@ -7,6 +7,7 @@ const MilkingHistory   = lazy(() => import("./modules/milking/pages/History.jsx"
 const WeightDashboard  = lazy(() => import("./modules/weight/pages/Dashboard.jsx"));
 const HeightDashboard  = lazy(() => import("./modules/height/pages/Dashboard.jsx"));
 const NotesPage        = lazy(() => import("./modules/notes/components/NotesPage.jsx"));
+const TeethingDashboard = lazy(() => import("./modules/teething/pages/Dashboard.jsx"));
 const HelpPage         = lazy(() => import("./modules/help/Help.jsx"));
 const ConfigPage       = lazy(() => import("./modules/config/Config.jsx"));
 
@@ -21,6 +22,7 @@ export default function AppRoutes() {
           <Route path="/weight"      element={<WeightDashboard />} />
           <Route path="/height"      element={<HeightDashboard />} />
           <Route path="/notes"       element={<NotesPage />} />
+          <Route path="/teething"    element={<TeethingDashboard />} />
           <Route path="/help"        element={<HelpPage />} />
           <Route path="/config"      element={<ConfigPage />} />
         </Routes>

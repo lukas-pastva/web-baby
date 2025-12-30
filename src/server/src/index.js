@@ -22,6 +22,10 @@ import { syncConfig } from "./modules/config/seed.js";
 import noteRoutes     from "./modules/notes/routes.js";
 import { syncNotes }  from "./modules/notes/seed.js";
 
+/* teething */
+import teethingRoutes   from "./modules/teething/routes.js";
+import { syncTeething } from "./modules/teething/seed.js";
+
 /* ─────────────────────────────────────────────────────────────── */
 
 dotenv.config();
@@ -30,9 +34,10 @@ dotenv.config();
 await Promise.all([
   syncAll(),      // milking
   syncWeight(),   // weight
-  syncHeight(),   // height  ← NEW
+  syncHeight(),   // height
   syncConfig(),   // app config
   syncNotes(),    // notes
+  syncTeething(), // teething
 ]);
 
 const app  = express();
@@ -45,9 +50,10 @@ app.use(express.json());
 /* REST API */
 app.use(milkingRoutes);
 app.use(weightRoutes);
-app.use(heightRoutes);   /* ← NEW */
+app.use(heightRoutes);
 app.use(configRoutes);
 app.use(noteRoutes);
+app.use(teethingRoutes);
 
 /* static SPA (built by Vite) */
 const __dirname = path.dirname(fileURLToPath(import.meta.url));

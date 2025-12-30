@@ -52,7 +52,8 @@ function daylightMode() {
       case "w": window.location.href = "/weight";       break;
       case "c": window.location.href = "/config";       break;
       case "h": window.location.href = "/help";         break;
-      case "n": window.location.href = "/notes";        break;  // ← NEW
+      case "n": window.location.href = "/notes";        break;
+      case "e": window.location.href = "/teething";     break;
       default:  break;
     }
   });

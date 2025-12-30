@@ -28,6 +28,7 @@ export default function Header({ showMeta = true }) {
         <a href="/weight"       className={p === "/weight"              ? "active" : ""}>Weight</a>
         <a href="/height"       className={p === "/height"              ? "active" : ""}>Height</a>
         <a href="/notes"        className={p === "/notes"               ? "active" : ""}>Notes</a>
+        <a href="/teething"     className={p === "/teething"            ? "active" : ""}>Teeth</a>
         <a href="/config"       className={p === "/config"              ? "active" : ""}>Config</a>
         <a href="/help"         className={p === "/help"                ? "active" : ""}>Help</a>
       </nav>
