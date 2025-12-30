@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS milking_feeds (
     id INT AUTO_INCREMENT PRIMARY KEY,
     fedAt DATETIME NOT NULL,
     amountMl INT NOT NULL,
-    feedingType ENUM('BREAST_DIRECT', 'BREAST_BOTTLE', 'FORMULA_PUMP', 'FORMULA_BOTTLE') NOT NULL
+    feedingType ENUM('BREAST_DIRECT', 'BREAST_BOTTLE', 'FORMULA_PUMP', 'FORMULA_BOTTLE', 'FRUIT', 'PORRIDGE', 'VEGETABLES_MEAT') NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ================================================================

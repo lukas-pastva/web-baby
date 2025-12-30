@@ -2,10 +2,13 @@ import { DataTypes } from "sequelize";
 import db from "../../db.js";          // shared Sequelize instance
 
 export const FeedingType = {
-  BREAST_DIRECT : "BREAST_DIRECT",
-  BREAST_BOTTLE : "BREAST_BOTTLE",
-  FORMULA_PUMP  : "FORMULA_PUMP",
-  FORMULA_BOTTLE: "FORMULA_BOTTLE",
+  BREAST_DIRECT   : "BREAST_DIRECT",
+  BREAST_BOTTLE   : "BREAST_BOTTLE",
+  FORMULA_PUMP    : "FORMULA_PUMP",
+  FORMULA_BOTTLE  : "FORMULA_BOTTLE",
+  FRUIT           : "FRUIT",
+  PORRIDGE        : "PORRIDGE",
+  VEGETABLES_MEAT : "VEGETABLES_MEAT",
 };
 
 /* ─── static daily recommendations ─── */
