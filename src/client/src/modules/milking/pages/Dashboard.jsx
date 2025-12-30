@@ -14,6 +14,14 @@ import FeedTable     from "../components/FeedTable.jsx";
 import SummaryChart  from "../components/SummaryChart.jsx";
 import { loadConfig } from "../../../config.js";
 
+/* Milk types – only these count towards eaten/should-have-eaten statistics */
+const MILK_TYPES = new Set([
+  "FORMULA_BOTTLE",
+  "FORMULA_PUMP",
+  "BREAST_BOTTLE",
+  "BREAST_DIRECT",
+]);
+
 /* helper – “1 h 23 m” / “45 m” */
 const fmtMinutes = (min)=>
   `${Math.floor(min / 60) ? Math.floor(min / 60) + " h " : ""}${min % 60} m`;
@@ -97,16 +105,20 @@ export default function MilkingDashboard() {
     targetSoFar          = Math.round((minutesIntoDay / 1440) * recToday);
   }
 
-  /* eaten so far today */
-  const actualSoFar = feeds.reduce((s,f)=>s+f.amountMl,0);
+  /* eaten so far today (milk only) */
+  const actualSoFar = feeds
+    .filter(f => MILK_TYPES.has(f.feedingType))
+    .reduce((s,f)=>s+f.amountMl,0);
 
-  /* eaten so far yesterday (up to the same time-of-day) */
+  /* eaten so far yesterday, milk only (up to the same time-of-day) */
   const minsIntoDay = now.getHours()*60 + now.getMinutes();
-  const actualY = feedsY.reduce((s,f)=>{
-    const t = new Date(f.fedAt);
-    const m = t.getHours()*60 + t.getMinutes();
-    return m <= minsIntoDay ? s + f.amountMl : s;
-  },0);
+  const actualY = feedsY
+    .filter(f => MILK_TYPES.has(f.feedingType))
+    .reduce((s,f)=>{
+      const t = new Date(f.fedAt);
+      const m = t.getHours()*60 + t.getMinutes();
+      return m <= minsIntoDay ? s + f.amountMl : s;
+    },0);
 
   /* ─── UI ───────────────────────────────────────────────────────── */
   return (
