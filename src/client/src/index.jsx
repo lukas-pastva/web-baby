@@ -43,6 +43,17 @@ function daylightMode() {
     setInterval(applyMode, 30 * 60 * 1000);
   }
 
+  /* auto-refresh when page becomes visible after being hidden (mobile) */
+  let hiddenAt = null;
+  const REFRESH_THRESHOLD = 5 * 60 * 1000; // 5 minutes
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      hiddenAt = Date.now();
+    } else if (hiddenAt && Date.now() - hiddenAt > REFRESH_THRESHOLD) {
+      window.location.reload();
+    }
+  });
+
   /* keyboard shortcuts (disabled when typing in input / textarea) */
   document.addEventListener("keydown", e => {
     if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
