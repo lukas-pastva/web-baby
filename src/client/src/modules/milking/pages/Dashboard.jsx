@@ -90,7 +90,7 @@ export default function MilkingDashboard() {
   const refreshAll = ()=> { reloadFeeds(); reloadFeedsY(); reloadLast(); reloadRec(); reloadWho(); };
   const handleSave   = p        => api.insertFeed(p)   .then(refreshAll).catch(e => setErr(e.message));
   const handleUpdate = (id, p ) => api.updateFeed(id,p).then(refreshAll).catch(e => setErr(e.message));
-  const handleDelete =  id      => api.deleteFeed(id)  .then(refreshAll).catch(e => setErr(e.message));
+  const handleDelete =  id      => api.deleteFeed(id)  .then(refreshAll).catch(e => { setErr(e.message); throw e; });
 
   /* time since last feed */
   const lastFeedAt = last ? new Date(last.fedAt) : null;

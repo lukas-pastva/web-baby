@@ -56,7 +56,13 @@ export default function FeedTable({ rows, onUpdate, onDelete }) {
   }
 
   async function del(id) {
-    if (onDelete && confirm("Delete this feed entry?")) await onDelete(id);
+    if (!onDelete) return;
+    if (!confirm("Delete this feed entry?")) return;
+    try {
+      await onDelete(id);
+    } catch (e) {
+      alert("Delete failed: " + e.message);
+    }
   }
 
   /* -------- UI --------------------------------------------------- */
