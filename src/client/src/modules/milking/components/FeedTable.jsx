@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { format, formatISO } from "date-fns";
 import { ICONS, LABELS } from "../../../feedTypes.js";
+import ConfirmDialog from "../../../components/ConfirmDialog.jsx";
 
 /* highlight colour for the row being edited (defined in CSS) */
 const EDIT_BG = "var(--edit-bg)";
@@ -9,6 +10,7 @@ export default function FeedTable({ rows, onUpdate, onDelete }) {
   const [sortKey, setKey]     = useState("fedAt");
   const [asc, setAsc]         = useState(false);      // ← newest-first default
   const [editingId, setEdit]  = useState(null);
+  const [deleteId, setDeleteId] = useState(null);     // ← for confirm dialog
   const [formVals, setForm]   = useState({
     amount   : "",
     type     : "FORMULA_BOTTLE",
@@ -55,14 +57,14 @@ export default function FeedTable({ rows, onUpdate, onDelete }) {
     setEdit(null);
   }
 
-  async function del(id) {
-    if (!onDelete) return;
-    if (!confirm("Delete this feed entry?")) return;
+  async function confirmDelete() {
+    if (!onDelete || !deleteId) return;
     try {
-      await onDelete(id);
+      await onDelete(deleteId);
     } catch (e) {
       alert("Delete failed: " + e.message);
     }
+    setDeleteId(null);
   }
 
   /* -------- UI --------------------------------------------------- */
@@ -106,7 +108,7 @@ export default function FeedTable({ rows, onUpdate, onDelete }) {
                       {onDelete && (
                         <button
                           className="btn-light"
-                          onClick={() => del(f.id)}
+                          onClick={() => setDeleteId(f.id)}
                         >
                           ×
                         </button>
@@ -189,6 +191,14 @@ export default function FeedTable({ rows, onUpdate, onDelete }) {
             </tr>
           </tfoot>
         </table>
+      )}
+
+      {deleteId && (
+        <ConfirmDialog
+          message="Delete this feed entry?"
+          onConfirm={confirmDelete}
+          onCancel={() => setDeleteId(null)}
+        />
       )}
     </>
   );
