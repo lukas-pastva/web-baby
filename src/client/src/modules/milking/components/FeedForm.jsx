@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { format, formatISO } from "date-fns";
-import { isTypeEnabled }   from "../../../config.js";
+import { isTypeEnabled, defaultMilkingMl }   from "../../../config.js";
 import {
   ORDER       as TYPES_IN_ORDER,
   ICONS, LABELS,
@@ -17,7 +17,7 @@ export default function FeedForm({ onSave }) {
   const fallbackType = enabledTypes[0] || TYPES_IN_ORDER[0];
 
   /* ---- state ----------------------------------------------------- */
-  const [amount, setAmt] = useState(60);
+  const [amount, setAmt] = useState(defaultMilkingMl());
   const [type,   setType] = useState(fallbackType);
   const [date,   setDate] = useState(nowDate());
   const [time,   setTime] = useState(nowTime());
@@ -56,7 +56,7 @@ export default function FeedForm({ onSave }) {
     setTimeout(() => setSaved(false), 2000);
 
     /* reset form & restart auto-updating */
-    setAmt(60);
+    setAmt(defaultMilkingMl());
     setDate(nowDate());
     setTime(nowTime());
     setAuto(true);

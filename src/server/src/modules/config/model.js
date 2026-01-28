@@ -12,6 +12,7 @@ export const AppConfig = db.define(
     childSurname : { type: DataTypes.STRING(64),                      allowNull:false, defaultValue:""     },
     birthTs      : { type: DataTypes.DATE,                            allowNull:true  },
     birthWeightGrams: { type: DataTypes.INTEGER,                      allowNull:true  },
+    defaultMilkingMl: { type: DataTypes.INTEGER,                      allowNull:false, defaultValue:105 },
   },
   { timestamps:false }
 );

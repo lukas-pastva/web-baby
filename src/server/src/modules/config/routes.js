@@ -20,7 +20,7 @@ r.put("/api/config", async (req, res) => {
   const {
     theme, mode, disabledTypes,
     childName, childSurname,
-    birthTs, birthWeightGrams,
+    birthTs, birthWeightGrams, defaultMilkingMl,
   } = req.body;
 
   await row.update({
@@ -31,6 +31,7 @@ r.put("/api/config", async (req, res) => {
     childSurname : typeof childSurname === "string"     ? childSurname : row.childSurname,
     birthTs      : birthTs || null,
     birthWeightGrams: Number.isFinite(birthWeightGrams) ? Math.round(birthWeightGrams) : row.birthWeightGrams,
+    defaultMilkingMl: Number.isFinite(defaultMilkingMl) ? Math.round(defaultMilkingMl) : row.defaultMilkingMl,
   });
 
   res.json(row);

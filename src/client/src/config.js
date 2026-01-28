@@ -13,6 +13,7 @@ const DEFAULT_CFG = {
   childSurname : "",
   birthTs      : "",
   birthWeightGrams: null,
+  defaultMilkingMl: 105,
 };
 
 let CACHE = { ...DEFAULT_CFG };
@@ -35,6 +36,9 @@ export function isTypeEnabled(t)  { return !CACHE.disabledTypes.includes(t); }
 export function birthTimestamp()  { return CACHE.birthTs || null; }
 export function birthWeight() {
   return Number.isFinite(CACHE.birthWeightGrams) ? CACHE.birthWeightGrams : null;
+}
+export function defaultMilkingMl() {
+  return Number.isFinite(CACHE.defaultMilkingMl) ? CACHE.defaultMilkingMl : 105;
 }
 
 /* save to DB and cache locally */

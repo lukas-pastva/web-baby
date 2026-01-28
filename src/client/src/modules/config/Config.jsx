@@ -15,6 +15,9 @@ export default function ConfigPage() {
   const [birthWeight, setWeight]   = useState(
     initial.birthWeightGrams != null ? String(initial.birthWeightGrams) : "",
   );
+  const [defaultMilking, setDefaultMilking] = useState(
+    initial.defaultMilkingMl != null ? initial.defaultMilkingMl : 105,
+  );
 
   /* birth date / time ---------------------------------------------- */
   const initDate = initial.birthTs ? new Date(initial.birthTs) : null;
@@ -49,6 +52,7 @@ export default function ConfigPage() {
       disabledTypes   : [...disabled],
       birthTs,
       birthWeightGrams: birthWeight ? Number(birthWeight) : null,
+      defaultMilkingMl: defaultMilking,
     });
 
     document.documentElement.setAttribute("data-theme", theme);
@@ -97,6 +101,18 @@ export default function ConfigPage() {
             onChange={(e) => setWeight(e.target.value)}
             style={{ marginBottom: "1rem" }}
           />
+
+          {/* default milking amount */}
+          <h3>Default milking amount&nbsp;(ml)</h3>
+          <select
+            value={defaultMilking}
+            onChange={(e) => setDefaultMilking(Number(e.target.value))}
+            style={{ marginBottom: "1rem" }}
+          >
+            {Array.from({ length: 59 }, (_, i) => 10 + i * 5).map((v) => (
+              <option key={v} value={v}>{v}</option>
+            ))}
+          </select>
 
           {/* accent theme */}
           <h3>Theme (accent)</h3>
