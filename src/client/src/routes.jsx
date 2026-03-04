@@ -10,6 +10,7 @@ const NotesPage        = lazy(() => import("./modules/notes/components/NotesPage
 const TeethingDashboard = lazy(() => import("./modules/teething/pages/Dashboard.jsx"));
 const HelpPage         = lazy(() => import("./modules/help/Help.jsx"));
 const ConfigPage       = lazy(() => import("./modules/config/Config.jsx"));
+const VideoPage        = lazy(() => import("./modules/video/pages/VideoPage.jsx"));
 
 export default function AppRoutes() {
   return (
@@ -24,6 +25,7 @@ export default function AppRoutes() {
           <Route path="/notes"       element={<NotesPage />} />
           <Route path="/teething"    element={<TeethingDashboard />} />
           <Route path="/help"        element={<HelpPage />} />
+          <Route path="/video"       element={<VideoPage />} />
           <Route path="/config"      element={<ConfigPage />} />
         </Routes>
       </Suspense>

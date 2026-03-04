@@ -65,6 +65,7 @@ function daylightMode() {
       case "h": window.location.href = "/help";         break;
       case "n": window.location.href = "/notes";        break;
       case "e": window.location.href = "/teething";     break;
+      case "v": window.location.href = "/video";        break;
       default:  break;
     }
   });

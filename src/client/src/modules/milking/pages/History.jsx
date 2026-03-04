@@ -83,6 +83,7 @@ export default function MilkingHistory() {
   const [weights,   setWeights  ] = useState([]);
   const [heights,   setHeights  ] = useState([]);
   const [err,       setErr      ] = useState("");
+  const [range,     setRange    ] = useState("month");  // "week" | "month" | "all"
 
   /* paged feed-data for the collapsible DayCards */
   const [page,      setPage     ] = useState(0);           // 0 = newest DAYS_PER_PAGE days
@@ -256,10 +257,29 @@ export default function MilkingHistory() {
   }, [summary, recs, birthDay, estimateForDay, birthW, sex]);
 
   /* -------------------------------------------------------------- */
+  /*  Slice chart arrays by selected range                          */
+  /* -------------------------------------------------------------- */
+  const rangeN = range === "week" ? 7 : range === "month" ? 30 : labels.length;
+
+  const fLabels    = useMemo(() => labels.slice(0, rangeN),    [labels, rangeN]);
+  const fCounts    = useMemo(() => feedCounts.slice(0, rangeN),[feedCounts, rangeN]);
+  const fSleep     = useMemo(() => sleepHours.slice(0, rangeN),[sleepHours, rangeN]);
+  const fWho       = useMemo(() => recommendedWho.slice(0, rangeN),      [recommendedWho, rangeN]);
+  const fPersonal  = useMemo(() => recommendedPersonal.slice(0, rangeN), [recommendedPersonal, rangeN]);
+  const fStacks    = useMemo(() => {
+    const out = {};
+    for (const t of FEED_TYPES) out[t] = stacks[t].slice(0, rangeN);
+    return out;
+  }, [stacks, rangeN]);
+
+  /* -------------------------------------------------------------- */
   /*  Render                                                        */
   /* -------------------------------------------------------------- */
-  const orderedCards = Object.values(feedsByDay)
-    .sort((a, b) => b.date - a.date);     // newest first
+  const orderedCards = useMemo(() => {
+    const all = Object.values(feedsByDay).sort((a, b) => b.date - a.date);
+    if (range === "all") return all;
+    return all.slice(0, rangeN);
+  }, [feedsByDay, range, rangeN]);
 
   return (
     <>
@@ -268,17 +288,24 @@ export default function MilkingHistory() {
       {err && <p style={{ color: "#c00", padding: "0 1rem" }}>{err}</p>}
 
       <main>
-        {/* ---------- timeline charts (always full) ---------- */}
-        {labels.length > 0 && (
+        {/* ---------- range pill tabs ---------- */}
+        <div className="range-tabs">
+          {[["week","Week"],["month","Month"],["all","All"]].map(([k,lbl])=>(
+            <button key={k} className={range===k?"active":""} onClick={()=>setRange(k)}>{lbl}</button>
+          ))}
+        </div>
+
+        {/* ---------- timeline charts ---------- */}
+        {fLabels.length > 0 && (
           <>
             <AllDaysChart
-              labels={labels}
-              stacks={stacks}
-              recommendedWho={recommendedWho}
-              recommendedPersonal={recommendedPersonal}
+              labels={fLabels}
+              stacks={fStacks}
+              recommendedWho={fWho}
+              recommendedPersonal={fPersonal}
             />
-            <FeedCountChart labels={labels} counts={feedCounts} />
-            <NightGapChart  labels={labels} gaps={sleepHours} />
+            <FeedCountChart labels={fLabels} counts={fCounts} />
+            <NightGapChart  labels={fLabels} gaps={fSleep} />
           </>
         )}
 
@@ -320,12 +347,12 @@ export default function MilkingHistory() {
           />
         ))}
 
-        {/* sentinel for infinite scroll */}
-        <div ref={sentinel} style={{ height: 1 }}></div>
+        {/* sentinel for infinite scroll (only in "all" mode) */}
+        {range === "all" && <div ref={sentinel} style={{ height: 1 }}></div>}
 
         {/* status */}
-        {loading && <p style={{ textAlign:"center" }}>Loading…</p>}
-        {done && !loading && (
+        {range === "all" && loading && <p style={{ textAlign:"center" }}>Loading…</p>}
+        {range === "all" && done && !loading && (
           <p style={{ textAlign:"center" }}><em>Start of timeline</em></p>
         )}
       </main>
