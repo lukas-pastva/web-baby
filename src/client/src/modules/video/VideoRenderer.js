@@ -436,6 +436,66 @@ function drawGrowthChart(ctx, x, y, w, h, byDay, currentDay, accent, fg, fgDim) 
   }
 }
 
+/* ── parent mood helper ──────────────────────────────────────────── */
+function moodFor(hours) {
+  if (hours == null || hours === 0) return { label: "no data", color: "#9ca3af", face: "none" };
+  if (hours < 3)  return { label: "exhausted", color: "#ef4444", face: "exhausted" };
+  if (hours < 5)  return { label: "tired",     color: "#f59e0b", face: "tired" };
+  if (hours < 7)  return { label: "okay",      color: "#3b82f6", face: "okay" };
+  return                  { label: "well-rested", color: "#22c55e", face: "happy" };
+}
+
+function drawMoodFace(ctx, cx, cy, r, face, color) {
+  // face circle
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fillStyle = hexToRgba(color, 0.2); ctx.fill();
+  ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.stroke();
+
+  const eyeY = cy - r * 0.2;
+  const eyeSpacing = r * 0.3;
+  const mouthY = cy + r * 0.35;
+
+  // eyes
+  if (face === "exhausted") {
+    // X eyes
+    ctx.strokeStyle = color; ctx.lineWidth = 2;
+    for (const sx of [-1, 1]) {
+      const ex = cx + sx * eyeSpacing;
+      ctx.beginPath(); ctx.moveTo(ex - 3, eyeY - 3); ctx.lineTo(ex + 3, eyeY + 3); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(ex + 3, eyeY - 3); ctx.lineTo(ex - 3, eyeY + 3); ctx.stroke();
+    }
+  } else if (face === "tired") {
+    // half-closed eyes
+    ctx.strokeStyle = color; ctx.lineWidth = 2;
+    for (const sx of [-1, 1]) {
+      const ex = cx + sx * eyeSpacing;
+      ctx.beginPath(); ctx.arc(ex, eyeY, 3, 0, Math.PI); ctx.stroke();
+    }
+  } else {
+    // open eyes
+    ctx.fillStyle = color;
+    for (const sx of [-1, 1]) {
+      ctx.beginPath(); ctx.arc(cx + sx * eyeSpacing, eyeY, 2.5, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  // mouth
+  ctx.strokeStyle = color; ctx.lineWidth = 2;
+  if (face === "exhausted") {
+    // frown
+    ctx.beginPath(); ctx.arc(cx, mouthY + 5, r * 0.25, Math.PI + 0.3, -0.3); ctx.stroke();
+  } else if (face === "tired") {
+    // flat line
+    ctx.beginPath(); ctx.moveTo(cx - r * 0.25, mouthY); ctx.lineTo(cx + r * 0.25, mouthY); ctx.stroke();
+  } else if (face === "okay") {
+    // slight smile
+    ctx.beginPath(); ctx.arc(cx, mouthY - 2, r * 0.2, 0.2, Math.PI - 0.2); ctx.stroke();
+  } else {
+    // big smile
+    ctx.beginPath(); ctx.arc(cx, mouthY - 3, r * 0.3, 0.15, Math.PI - 0.15); ctx.stroke();
+  }
+}
+
 /* ── sleep visualization ─────────────────────────────────────────── */
 function drawSleepSection(ctx, x, y, w, h, day, byDay, dayIndex, fg, fgDim) {
   rr(ctx, x, y, w, h, 10);
@@ -445,18 +505,28 @@ function drawSleepSection(ctx, x, y, w, h, day, byDay, dayIndex, fg, fgDim) {
   const sleepColor = "#6366f1";
   const maxPossible = 12;
 
-  // moon icon
-  ctx.fillStyle = "#e2e8f0";
-  ctx.beginPath(); ctx.arc(x + 22, y + h/2, 10, 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle = "rgba(15,17,23,0.7)";
-  ctx.beginPath(); ctx.arc(x + 26, y + h/2 - 3, 8, 0, Math.PI*2); ctx.fill();
-
-  // title
-  ctx.fillStyle = "#fff"; ctx.font = "bold 12px Inter, sans-serif";
-  ctx.fillText("Night sleep", x + 40, y + 16);
-
   const sleepH = day.sleepHours ?? 0;
   const maxEver = day.maxSleepSoFar ?? 0;
+  const mood = moodFor(sleepH > 0 ? sleepH : null);
+
+  // parent mood face (replaces moon icon)
+  if (mood.face !== "none") {
+    drawMoodFace(ctx, x + 22, y + h/2, 14, mood.face, mood.color);
+  } else {
+    // moon icon fallback
+    ctx.fillStyle = "#e2e8f0";
+    ctx.beginPath(); ctx.arc(x + 22, y + h/2, 10, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = "rgba(15,17,23,0.7)";
+    ctx.beginPath(); ctx.arc(x + 26, y + h/2 - 3, 8, 0, Math.PI*2); ctx.fill();
+  }
+
+  // title with mood label
+  ctx.fillStyle = "#fff"; ctx.font = "bold 12px Inter, sans-serif";
+  ctx.fillText("Night sleep", x + 40, y + 16);
+  if (mood.face !== "none") {
+    ctx.fillStyle = mood.color; ctx.font = "10px Inter, sans-serif";
+    ctx.fillText(mood.label, x + 115, y + 16);
+  }
 
   // sleep bar
   const barX = x + 40;
@@ -470,10 +540,10 @@ function drawSleepSection(ctx, x, y, w, h, day, byDay, dayIndex, fg, fgDim) {
   if (sleepH > 0) {
     const pct = sleepH / maxPossible;
     rr(ctx, barX, barY, barW * pct, barH, barH/2);
-    ctx.fillStyle = sleepColor; ctx.fill();
+    ctx.fillStyle = mood.color; ctx.fill();
     // glow
     rr(ctx, barX, barY, barW * pct, barH, barH/2);
-    ctx.fillStyle = hexToRgba(sleepColor, 0.15); ctx.fill();
+    ctx.fillStyle = hexToRgba(mood.color, 0.15); ctx.fill();
   }
 
   // max marker
@@ -485,7 +555,7 @@ function drawSleepSection(ctx, x, y, w, h, day, byDay, dayIndex, fg, fgDim) {
   }
 
   // labels
-  ctx.fillStyle = sleepColor; ctx.font = "bold 14px Inter, sans-serif";
+  ctx.fillStyle = mood.color; ctx.font = "bold 14px Inter, sans-serif";
   ctx.textAlign = "right";
   ctx.fillText(sleepH > 0 ? `${sleepH}h` : "—", x + w - 14, y + 16);
   ctx.font = "10px Inter, sans-serif";
@@ -648,17 +718,23 @@ export function createRenderer(canvas, { accentColor, childName, byDay }) {
     drawCelestial(ctx, W - 35, 30, hourOfDay, accentColor);
 
     /* ── layout regions ────────────────────────────────── */
-    const bottleX = 30;
-    const bottleY = 75;
-    const bottleW = 110;
-    const bottleH = 320;
     const feedFraction = hourOfDay / 23;
 
-    // bottle card background
-    rr(ctx, bottleX - 15, bottleY - 10, bottleW + 30, 540, 12);
+    // scale bottle size with total ml eaten (0→smallest, 800ml→full)
+    const totalMlRaw = day.summary?.totalsByType
+      ? Object.values(day.summary.totalsByType).reduce((a, b) => a + b, 0)
+      : 0;
+    const bottleRatio = Math.max(0.4, Math.min(1, totalMlRaw / 800));
+    const bottleH = Math.round(320 * bottleRatio);
+    const bottleW = Math.round(110 * bottleRatio);
+    const bottleX = 30 + Math.round((110 - bottleW) / 2);
+    const bottleY = 75 + Math.round((320 - bottleH) / 2);
+
+    // bottle card background (fixed size)
+    rr(ctx, 15, 65, 140, 540, 12);
     ctx.fillStyle = "rgba(255,255,255,0.03)"; ctx.fill();
     ctx.strokeStyle = "rgba(255,255,255,0.06)"; ctx.lineWidth = 1;
-    rr(ctx, bottleX - 15, bottleY - 10, bottleW + 30, 540, 12); ctx.stroke();
+    rr(ctx, 15, 65, 140, 540, 12); ctx.stroke();
 
     drawBottle(ctx, bottleX, bottleY, bottleW, bottleH, feedFraction, day.summary, accentColor, fg, fgDim);
 
