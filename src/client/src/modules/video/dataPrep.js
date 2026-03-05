@@ -4,7 +4,8 @@
  * Returns:
  *   totalDays   – number of days from birth to today
  *   birthDate   – Date object
- *   byDay[i]    – { dayIndex, date, summary, weightG, heightCm, teethCount }
+ *   byDay[i]    – { dayIndex, date, summary, weightG, heightCm, teethCount,
+ *                   feedCount, maxSleepSoFar }
  */
 import { startOfDay, differenceInCalendarDays, addDays } from "date-fns";
 
@@ -53,6 +54,7 @@ export function prepareData({ birthTs, summaries, weights, heights, teeth }) {
 
   /* ---- build per-day array ---- */
   const byDay = [];
+  let maxSleepSoFar = 0;
   for (let i = 0; i < totalDays; i++) {
     const date   = addDays(birthDate, i);
     const dayStr = date.toISOString().slice(0, 10);
@@ -61,14 +63,20 @@ export function prepareData({ birthTs, summaries, weights, heights, teeth }) {
     const weightG  = interpolate(wSorted, "weightGrams", date);
     const heightCm = interpolate(hSorted, "heightCm", date);
 
+    const sleepH = summary?.sleepHours ?? null;
+    if (sleepH != null && sleepH > maxSleepSoFar) maxSleepSoFar = sleepH;
+
     byDay.push({
-      dayIndex  : i,
+      dayIndex   : i,
       date,
       dayStr,
       summary,
-      weightG   : weightG != null ? Math.round(weightG) : null,
-      heightCm  : heightCm != null ? +heightCm.toFixed(1) : null,
-      teethCount: teethByDay[i],
+      weightG    : weightG != null ? Math.round(weightG) : null,
+      heightCm   : heightCm != null ? +heightCm.toFixed(1) : null,
+      teethCount : teethByDay[i],
+      feedCount  : summary?.feedCount ?? 0,
+      sleepHours : sleepH,
+      maxSleepSoFar,
     });
   }
 

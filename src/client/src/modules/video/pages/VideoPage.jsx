@@ -12,18 +12,20 @@ import { prepareData } from "../dataPrep.js";
 import { createRenderer } from "../VideoRenderer.js";
 
 const FPS = 30;
+const FRAME_MS = Math.round(1000 / FPS);   // ~33ms per frame
 
 export default function VideoPage() {
   const { birthTs, childName = "", childSurname = "" } = loadConfig();
   const name = `${childName} ${childSurname}`.trim() || "Baby";
 
-  const [status, setStatus]     = useState("idle");      // idle | loading | generating | done | error
-  const [progress, setProgress] = useState(0);            // 0-1
+  const [status, setStatus]     = useState("idle");
+  const [progress, setProgress] = useState(0);
   const [videoUrl, setVideoUrl] = useState(null);
   const [errMsg, setErrMsg]     = useState("");
+  const [speed, setSpeed]       = useState("normal"); // fast | normal | detailed
 
   const canvasRef = useRef(null);
-  const dataRef   = useRef(null);    // prepared data cache
+  const dataRef   = useRef(null);
 
   /* ── fetch all data on mount ──────────────────────────── */
   useEffect(() => {
@@ -66,8 +68,12 @@ export default function VideoPage() {
       byDay      : data.byDay,
     });
 
-    const totalFrames = data.totalDays * 24;          // 1 frame per hour
-    const stream  = canvas.captureStream(0);           // manual frame push
+    // hold frames per day: determines video speed
+    const holdMap = { fast: 4, normal: 10, detailed: 18 };
+    const holdFrames = holdMap[speed] || 10;
+    const totalDays = data.totalDays;
+
+    const stream  = canvas.captureStream(0);
     const chunks  = [];
 
     /* pick supported codec */
@@ -87,19 +93,22 @@ export default function VideoPage() {
 
     recorder.start();
 
-    /* render frames in batches to keep UI responsive */
-    const BATCH = 120;
-    for (let f = 0; f < totalFrames; f += BATCH) {
-      const end = Math.min(f + BATCH, totalFrames);
-      for (let i = f; i < end; i++) {
-        renderFrame(i);
-        // request a frame from the capture stream
-        if (stream.getVideoTracks()[0].requestFrame) {
-          stream.getVideoTracks()[0].requestFrame();
-        }
+    const track = stream.getVideoTracks()[0];
+
+    /* render one frame per day, hold for multiple frames with real delays */
+    for (let d = 0; d < totalDays; d++) {
+      renderFrame(d);
+
+      for (let h = 0; h < holdFrames; h++) {
+        if (track.requestFrame) track.requestFrame();
+        // real delay so MediaRecorder assigns proper timestamps
+        await new Promise(r => setTimeout(r, FRAME_MS));
       }
-      setProgress(end / totalFrames);
-      await new Promise(r => setTimeout(r, 0));        // yield to browser
+
+      // update progress every 5 days to avoid excessive re-renders
+      if (d % 5 === 0 || d === totalDays - 1) {
+        setProgress((d + 1) / totalDays);
+      }
     }
 
     recorder.stop();
@@ -108,7 +117,17 @@ export default function VideoPage() {
     const blob = new Blob(chunks, { type: mimeType });
     setVideoUrl(URL.createObjectURL(blob));
     setStatus("done");
-  }, [name]);
+  }, [name, speed]);
+
+  /* estimated generation time */
+  const estTime = dataRef.current
+    ? Math.round(dataRef.current.totalDays * (speed === "fast" ? 4 : speed === "detailed" ? 18 : 10) * FRAME_MS / 1000)
+    : null;
+
+  /* estimated video duration */
+  const estVideo = dataRef.current
+    ? Math.round(dataRef.current.totalDays * (speed === "fast" ? 4 : speed === "detailed" ? 18 : 10) / FPS)
+    : null;
 
   /* ── render ───────────────────────────────────────────── */
   return (
@@ -117,7 +136,8 @@ export default function VideoPage() {
       <main className="video-wrap card" style={{ padding: 20 }}>
         <h2 style={{ marginTop: 0 }}>Video Timelapse</h2>
         <p style={{ color: "#6b7280" }}>
-          Generate a video that shows your baby's growth — one frame per hour of life.
+          Generate a video showing your baby's complete growth journey — feeding, weight, height,
+          sleep patterns, and milestones.
         </p>
 
         {status === "error" && (
@@ -127,9 +147,33 @@ export default function VideoPage() {
         {status === "loading" && <p>Loading data...</p>}
 
         {(status === "idle" || status === "done") && (
-          <button className="btn" onClick={generate}>
-            {status === "done" ? "Regenerate Video" : "Generate Video"}
-          </button>
+          <>
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ fontWeight: 600, marginRight: 12, fontSize: 14 }}>Speed:</label>
+              {["fast", "normal", "detailed"].map(s => (
+                <label key={s} style={{ marginRight: 16, cursor: "pointer", fontSize: 14 }}>
+                  <input
+                    type="radio"
+                    name="speed"
+                    value={s}
+                    checked={speed === s}
+                    onChange={() => setSpeed(s)}
+                    style={{ marginRight: 4 }}
+                  />
+                  {s === "fast" ? "Fast (~0.13s/day)" : s === "normal" ? "Normal (~0.33s/day)" : "Detailed (~0.6s/day)"}
+                </label>
+              ))}
+              {estTime != null && (
+                <span style={{ color: "#6b7280", fontSize: 13 }}>
+                  {" "}— est. ~{estTime}s to generate, ~{estVideo}s video
+                  ({dataRef.current?.totalDays} days)
+                </span>
+              )}
+            </div>
+            <button className="btn" onClick={generate}>
+              {status === "done" ? "Regenerate Video" : "Generate Video"}
+            </button>
+          </>
         )}
 
         {status === "generating" && (
@@ -141,7 +185,7 @@ export default function VideoPage() {
           </>
         )}
 
-        {/* hidden canvas used for rendering */}
+        {/* canvas used for rendering (shown during generation) */}
         <canvas
           ref={canvasRef}
           style={{
