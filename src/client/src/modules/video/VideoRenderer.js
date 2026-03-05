@@ -1,15 +1,8 @@
 /**
- * Canvas 2D frame renderer – one frame per day.
+ * Canvas 2D frame renderer – dark theme, 30 FPS.
  *
+ * Each frame = one time-step (hour slot) of the baby's life.
  * Canvas: 1280 x 720
- *
- * Layout:
- *   Header:        baby illustration, name, date, age
- *   Left:          today's feeding stacked bar + total ml + feed count + legend
- *   Top-right:     weight trend (last 60 days)
- *   Mid-right:     height trend (last 60 days)
- *   Bottom-right:  night sleep trend (last 30 days) + max night sleep
- *   Bottom bar:    teeth count indicator
  */
 
 import { format } from "date-fns";
@@ -18,527 +11,707 @@ import { ORDER as FEED_TYPES, COLOURS, LABELS } from "../../feedTypes.js";
 const W = 1280;
 const H = 720;
 
-/* colour helpers */
+/* ── colour helpers ──────────────────────────────────────────────── */
 function hexToRgba(hex, a) {
   const c = hex.replace("#", "");
-  const r = parseInt(c.substring(0, 2), 16);
-  const g = parseInt(c.substring(2, 4), 16);
-  const b = parseInt(c.substring(4, 6), 16);
-  return `rgba(${r},${g},${b},${a})`;
+  return `rgba(${parseInt(c.substring(0,2),16)},${parseInt(c.substring(2,4),16)},${parseInt(c.substring(4,6),16)},${a})`;
+}
+function lerpColor(a, b, t) {
+  const pa = [parseInt(a.slice(1,3),16), parseInt(a.slice(3,5),16), parseInt(a.slice(5,7),16)];
+  const pb = [parseInt(b.slice(1,3),16), parseInt(b.slice(3,5),16), parseInt(b.slice(5,7),16)];
+  const r = Math.round(pa[0] + (pb[0]-pa[0]) * t);
+  const g = Math.round(pa[1] + (pb[1]-pa[1]) * t);
+  const bl = Math.round(pa[2] + (pb[2]-pa[2]) * t);
+  return `rgb(${r},${g},${bl})`;
 }
 
-/* ── baby stage illustrations (canvas-drawn) ──────────────────────── */
+/* ── sky colours by hour ─────────────────────────────────────────── */
+function skyGradient(ctx, hourOfDay) {
+  // night: deep navy, dawn/dusk: warm, day: dark blue-gray
+  const stops = [
+    { h:  0, top: "#070b15", bot: "#0d1020" },  // midnight
+    { h:  5, top: "#0a0f1e", bot: "#121830" },  // pre-dawn
+    { h:  7, top: "#1a1535", bot: "#2d1f4e" },  // dawn
+    { h:  9, top: "#1c2333", bot: "#232d42" },  // morning
+    { h: 12, top: "#1e2738", bot: "#263245" },  // noon (still dark theme)
+    { h: 17, top: "#1e2738", bot: "#263245" },  // afternoon
+    { h: 19, top: "#1a1535", bot: "#2d1f4e" },  // dusk
+    { h: 21, top: "#0d1025", bot: "#111530" },  // evening
+    { h: 24, top: "#070b15", bot: "#0d1020" },  // midnight
+  ];
+  let s0 = stops[0], s1 = stops[1];
+  for (let i = 0; i < stops.length - 1; i++) {
+    if (hourOfDay >= stops[i].h && hourOfDay <= stops[i+1].h) {
+      s0 = stops[i]; s1 = stops[i+1]; break;
+    }
+  }
+  const t = (hourOfDay - s0.h) / (s1.h - s0.h || 1);
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, lerpColor(s0.top, s1.top, t));
+  g.addColorStop(1, lerpColor(s0.bot, s1.bot, t));
+  return g;
+}
+
+/* ── stars (drawn at night) ──────────────────────────────────────── */
+const STARS = Array.from({length: 60}, () => ({
+  x: Math.random() * W,
+  y: Math.random() * H * 0.4,
+  r: Math.random() * 1.5 + 0.5,
+  b: Math.random() * 0.5 + 0.5,
+}));
+
+function drawStars(ctx, hourOfDay) {
+  const nightness = hourOfDay < 6 ? 1 : hourOfDay < 8 ? (8-hourOfDay)/2
+    : hourOfDay > 20 ? (hourOfDay-20)/4 : hourOfDay > 18 ? (hourOfDay-18)/2 * 0.5 : 0;
+  if (nightness < 0.05) return;
+  for (const s of STARS) {
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255,255,255,${nightness * s.b * 0.6})`;
+    ctx.fill();
+  }
+}
+
+/* ── sun / moon icon ─────────────────────────────────────────────── */
+function drawCelestial(ctx, x, y, hourOfDay, accent) {
+  const isDay = hourOfDay >= 7 && hourOfDay < 19;
+  if (isDay) {
+    // sun
+    const sunColor = "#fbbf24";
+    ctx.fillStyle = sunColor;
+    ctx.beginPath(); ctx.arc(x, y, 14, 0, Math.PI * 2); ctx.fill();
+    // glow
+    ctx.fillStyle = hexToRgba(sunColor, 0.15);
+    ctx.beginPath(); ctx.arc(x, y, 22, 0, Math.PI * 2); ctx.fill();
+    // rays
+    ctx.strokeStyle = hexToRgba(sunColor, 0.4);
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.moveTo(x + Math.cos(a) * 17, y + Math.sin(a) * 17);
+      ctx.lineTo(x + Math.cos(a) * 24, y + Math.sin(a) * 24);
+      ctx.stroke();
+    }
+  } else {
+    // moon
+    ctx.fillStyle = "#e2e8f0";
+    ctx.beginPath(); ctx.arc(x, y, 13, 0, Math.PI * 2); ctx.fill();
+    // crescent shadow
+    ctx.fillStyle = hexToRgba("#070b15", 0.7);
+    ctx.beginPath(); ctx.arc(x + 5, y - 3, 11, 0, Math.PI * 2); ctx.fill();
+    // glow
+    ctx.fillStyle = "rgba(226,232,240,0.08)";
+    ctx.beginPath(); ctx.arc(x, y, 22, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+/* ── baby illustration ───────────────────────────────────────────── */
 function getBabyStage(dayIndex) {
-  const months = dayIndex / 30.44;
-  if (months < 1)  return 0;  // newborn
-  if (months < 3)  return 1;  // tiny baby
-  if (months < 6)  return 2;  // infant
-  if (months < 9)  return 3;  // sitting baby
-  if (months < 12) return 4;  // crawling baby
-  return 5;                   // toddler
+  const m = dayIndex / 30.44;
+  if (m < 1)  return 0;
+  if (m < 3)  return 1;
+  if (m < 6)  return 2;
+  if (m < 9)  return 3;
+  if (m < 12) return 4;
+  return 5;
 }
 
-function drawBabyIllustration(ctx, cx, cy, stage, accent) {
-  const skinColor = "#fdd8b5";
-  const cheekColor = "#f8b4b4";
-  const eyeColor = "#374151";
-  const mouthColor = "#e05566";
-
+function drawBaby(ctx, cx, cy, stage, accent) {
+  const skin = "#fdd8b5";
+  const cheek = "#f8b4b4";
   ctx.save();
   ctx.translate(cx, cy);
+  const sc = 0.75 + stage * 0.05;
+  ctx.scale(sc, sc);
 
-  // scale grows with stage
-  const scale = 0.7 + stage * 0.06;
-  ctx.scale(scale, scale);
-
+  const headR = 18;
   // head
-  const headR = 20;
-  ctx.beginPath();
-  ctx.arc(0, -8, headR, 0, Math.PI * 2);
-  ctx.fillStyle = skinColor;
-  ctx.fill();
-  ctx.strokeStyle = "#e8c9a0";
-  ctx.lineWidth = 1;
-  ctx.stroke();
+  ctx.beginPath(); ctx.arc(0, 0, headR, 0, Math.PI*2);
+  ctx.fillStyle = skin; ctx.fill();
+  ctx.strokeStyle = "#e8c9a0"; ctx.lineWidth = 1; ctx.stroke();
 
-  // hair (more with age)
+  // hair
   if (stage >= 1) {
     ctx.fillStyle = "#8B6914";
-    const hairCount = Math.min(stage + 2, 7);
-    for (let i = 0; i < hairCount; i++) {
-      const angle = -Math.PI * 0.8 + (i / (hairCount - 1)) * Math.PI * 0.6;
-      const hx = Math.cos(angle) * (headR - 2);
-      const hy = Math.sin(angle) * (headR - 2) - 8;
+    const n = Math.min(stage + 2, 7);
+    for (let i = 0; i < n; i++) {
+      const a = -Math.PI*0.8 + (i/(n-1)) * Math.PI*0.6;
       ctx.beginPath();
-      ctx.ellipse(hx, hy, 4, 6 + stage, angle + Math.PI / 2, 0, Math.PI * 2);
+      ctx.ellipse(Math.cos(a)*(headR-2), Math.sin(a)*(headR-2), 3, 5+stage, a+Math.PI/2, 0, Math.PI*2);
       ctx.fill();
     }
   }
 
   // eyes
   if (stage === 0) {
-    // closed eyes (sleeping newborn)
-    ctx.strokeStyle = eyeColor;
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.arc(-7, -10, 3, 0, Math.PI);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(7, -10, 3, 0, Math.PI);
-    ctx.stroke();
+    ctx.strokeStyle = "#374151"; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(-6, -2, 3, 0, Math.PI); ctx.stroke();
+    ctx.beginPath(); ctx.arc(6, -2, 3, 0, Math.PI); ctx.stroke();
   } else {
-    // open eyes
     ctx.fillStyle = "#fff";
-    ctx.beginPath(); ctx.arc(-7, -10, 4, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(7, -10, 4, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = eyeColor;
-    ctx.beginPath(); ctx.arc(-6, -10, 2, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(8, -10, 2, 0, Math.PI * 2); ctx.fill();
-    // highlight
+    ctx.beginPath(); ctx.arc(-6, -2, 3.5, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(6, -2, 3.5, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = "#374151";
+    ctx.beginPath(); ctx.arc(-5.5, -2, 1.8, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(6.5, -2, 1.8, 0, Math.PI*2); ctx.fill();
     ctx.fillStyle = "#fff";
-    ctx.beginPath(); ctx.arc(-5, -11, 1, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(9, -11, 1, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(-5, -3, 0.8, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(7, -3, 0.8, 0, Math.PI*2); ctx.fill();
   }
 
   // cheeks
-  ctx.fillStyle = cheekColor;
-  ctx.globalAlpha = 0.3;
-  ctx.beginPath(); ctx.arc(-13, -4, 4, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(13, -4, 4, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = cheek; ctx.globalAlpha = 0.25;
+  ctx.beginPath(); ctx.arc(-12, 5, 4, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(12, 5, 4, 0, Math.PI*2); ctx.fill();
   ctx.globalAlpha = 1;
 
   // mouth
-  ctx.strokeStyle = mouthColor;
-  ctx.lineWidth = 1.5;
-  if (stage <= 1) {
-    // small mouth
-    ctx.beginPath();
-    ctx.arc(0, -2, 3, 0.2, Math.PI - 0.2);
-    ctx.stroke();
-  } else {
-    // bigger smile
-    ctx.beginPath();
-    ctx.arc(0, -3, 5, 0.15, Math.PI - 0.15);
-    ctx.stroke();
-    // teeth showing for older babies
-    if (stage >= 4) {
-      ctx.fillStyle = "#fff";
-      ctx.fillRect(-3, -2, 6, 3);
-    }
-  }
+  ctx.strokeStyle = "#e05566"; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(0, 6, stage < 2 ? 3 : 5, 0.15, Math.PI-0.15); ctx.stroke();
+  if (stage >= 4) { ctx.fillStyle = "#fff"; ctx.fillRect(-3, 7, 6, 2); }
 
   // body
-  const bodyY = headR - 8 + 2;
+  const by = headR + 4;
   if (stage === 0) {
-    // swaddle
     ctx.fillStyle = accent;
-    ctx.beginPath();
-    ctx.ellipse(0, bodyY + 14, 16, 18, 0, 0, Math.PI * 2);
-    ctx.fill();
-    // wrap line
-    ctx.strokeStyle = hexToRgba(accent, 0.5);
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(-12, bodyY + 8);
-    ctx.quadraticCurveTo(0, bodyY + 20, 12, bodyY + 8);
-    ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(0, by+12, 14, 16, 0, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = hexToRgba(accent, 0.4); ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(-10, by+6); ctx.quadraticCurveTo(0, by+18, 10, by+6); ctx.stroke();
   } else if (stage <= 2) {
-    // onesie
     ctx.fillStyle = accent;
-    roundRectPath(ctx, -14, bodyY, 28, 28, 6);
-    ctx.fill();
-    // arms
-    ctx.fillStyle = skinColor;
-    ctx.beginPath(); ctx.ellipse(-18, bodyY + 10, 5, 4, -0.3, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(18, bodyY + 10, 5, 4, 0.3, 0, Math.PI * 2); ctx.fill();
-  } else if (stage <= 3) {
-    // sitting body
-    ctx.fillStyle = accent;
-    roundRectPath(ctx, -16, bodyY, 32, 24, 6);
-    ctx.fill();
-    // legs (sitting)
-    ctx.fillStyle = accent;
-    ctx.beginPath(); ctx.ellipse(-10, bodyY + 28, 8, 5, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(10, bodyY + 28, 8, 5, 0, 0, Math.PI * 2); ctx.fill();
-    // arms reaching
-    ctx.fillStyle = skinColor;
-    ctx.beginPath(); ctx.ellipse(-22, bodyY + 4, 5, 4, -0.5, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(22, bodyY + 4, 5, 4, 0.5, 0, Math.PI * 2); ctx.fill();
+    rr(ctx, -12, by, 24, 24, 5); ctx.fill();
+    ctx.fillStyle = skin;
+    ctx.beginPath(); ctx.ellipse(-16, by+8, 4, 3, -0.3, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(16, by+8, 4, 3, 0.3, 0, Math.PI*2); ctx.fill();
   } else {
-    // standing body
     ctx.fillStyle = accent;
-    roundRectPath(ctx, -14, bodyY, 28, 22, 6);
-    ctx.fill();
-    // legs (standing)
+    rr(ctx, -13, by, 26, 20, 5); ctx.fill();
     ctx.fillStyle = accent;
-    ctx.fillRect(-12, bodyY + 20, 8, 14);
-    ctx.fillRect(4, bodyY + 20, 8, 14);
-    // feet
-    ctx.fillStyle = skinColor;
-    ctx.beginPath(); ctx.ellipse(-8, bodyY + 35, 6, 3, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(8, bodyY + 35, 6, 3, 0, 0, Math.PI * 2); ctx.fill();
-    // arms
-    ctx.fillStyle = skinColor;
-    ctx.beginPath(); ctx.ellipse(-20, bodyY + 6, 5, 4, -0.4, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(20, bodyY + 6, 5, 4, 0.4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillRect(-10, by+18, 7, 12); ctx.fillRect(3, by+18, 7, 12);
+    ctx.fillStyle = skin;
+    ctx.beginPath(); ctx.ellipse(-7, by+31, 5, 3, 0, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(7, by+31, 5, 3, 0, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-18, by+5, 4, 3, -0.4, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(18, by+5, 4, 3, 0.4, 0, Math.PI*2); ctx.fill();
   }
 
   ctx.restore();
 }
 
-function roundRectPath(ctx, x, y, w, h, r) {
+function rr(ctx, x, y, w, h, r) {
   ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + w - r, y);
-  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-  ctx.lineTo(x + w, y + h - r);
-  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-  ctx.lineTo(x + r, y + h);
-  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-  ctx.lineTo(x, y + r);
-  ctx.quadraticCurveTo(x, y, x + r, y);
-  ctx.closePath();
+  ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y);
+  ctx.quadraticCurveTo(x+w,y,x+w,y+r); ctx.lineTo(x+w,y+h-r);
+  ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h); ctx.lineTo(x+r,y+h);
+  ctx.quadraticCurveTo(x,y+h,x,y+h-r); ctx.lineTo(x,y+r);
+  ctx.quadraticCurveTo(x,y,x+r,y); ctx.closePath();
 }
 
-/* ── main renderer ────────────────────────────────────────────────── */
+/* ── baby bottle ─────────────────────────────────────────────────── */
+function drawBottle(ctx, x, y, w, h, fillFraction, summary, accent, fg, fgDim) {
+  const neckW = w * 0.35;
+  const neckH = h * 0.12;
+  const capH  = h * 0.06;
+  const bodyY = y + capH + neckH;
+  const bodyH = h - capH - neckH;
+  const neckX = x + (w - neckW) / 2;
+
+  // cap
+  ctx.fillStyle = "#4b5563";
+  rr(ctx, neckX - 4, y, neckW + 8, capH, 4); ctx.fill();
+
+  // neck
+  ctx.fillStyle = "rgba(255,255,255,0.08)";
+  rr(ctx, neckX, y + capH, neckW, neckH, 2); ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,0.15)"; ctx.lineWidth = 1;
+  rr(ctx, neckX, y + capH, neckW, neckH, 2); ctx.stroke();
+
+  // body outline
+  ctx.fillStyle = "rgba(255,255,255,0.06)";
+  rr(ctx, x, bodyY, w, bodyH, 10); ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,0.2)"; ctx.lineWidth = 1.5;
+  rr(ctx, x, bodyY, w, bodyH, 10); ctx.stroke();
+
+  // measurement lines
+  ctx.strokeStyle = "rgba(255,255,255,0.1)"; ctx.lineWidth = 0.5;
+  for (let i = 1; i <= 4; i++) {
+    const ly = bodyY + bodyH - (i / 5) * bodyH;
+    ctx.beginPath(); ctx.moveTo(x + 3, ly); ctx.lineTo(x + w * 0.3, ly); ctx.stroke();
+  }
+
+  // fill with feed-type colours
+  if (summary?.totalsByType && fillFraction > 0) {
+    const total = Object.values(summary.totalsByType).reduce((a, b) => a + b, 0);
+    if (total > 0) {
+      const maxMl = Math.max(total, 500);
+      const fillH = (total / maxMl) * bodyH * 0.9 * fillFraction;
+
+      ctx.save();
+      // clip to bottle body shape
+      rr(ctx, x + 1, bodyY + 1, w - 2, bodyH - 2, 9);
+      ctx.clip();
+
+      let yOff = bodyY + bodyH;
+      for (const t of FEED_TYPES) {
+        const ml = (summary.totalsByType[t] || 0) * fillFraction;
+        const sh = (ml / maxMl) * bodyH * 0.9;
+        if (sh < 0.5) continue;
+        ctx.fillStyle = COLOURS[t];
+        ctx.fillRect(x, yOff - sh, w, sh);
+        yOff -= sh;
+      }
+
+      // liquid surface shine
+      ctx.fillStyle = "rgba(255,255,255,0.12)";
+      ctx.fillRect(x + w * 0.15, yOff, w * 0.15, Math.min(fillH, 3));
+
+      ctx.restore();
+    }
+  }
+
+  // bottle highlight (glass effect)
+  ctx.fillStyle = "rgba(255,255,255,0.06)";
+  ctx.fillRect(x + w * 0.7, bodyY + 8, w * 0.08, bodyH - 16);
+}
+
+/* ── progress gauge (horizontal bar) ─────────────────────────────── */
+function drawGauge(ctx, x, y, w, h, value, maxVal, color, label, unit, fg, fgDim) {
+  const pct = Math.min(value / maxVal, 1);
+
+  // track
+  rr(ctx, x, y, w, h, h/2); ctx.fillStyle = "rgba(255,255,255,0.06)"; ctx.fill();
+
+  // fill
+  if (pct > 0.01) {
+    rr(ctx, x, y, w * pct, h, h/2); ctx.fillStyle = color; ctx.fill();
+    // glow
+    rr(ctx, x, y, w * pct, h, h/2);
+    ctx.fillStyle = hexToRgba(color, 0.15); ctx.fill();
+  }
+
+  // value text
+  ctx.fillStyle = "#fff";
+  ctx.font = "bold 14px Inter, sans-serif";
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "left";
+  ctx.fillText(`${label}: ${formatValShort(value, unit)}`, x, y - 10);
+
+  // endpoint
+  ctx.fillStyle = fgDim;
+  ctx.font = "11px Inter, sans-serif";
+  ctx.textAlign = "right";
+  ctx.fillText(formatValShort(maxVal, unit), x + w, y - 10);
+  ctx.textAlign = "left";
+}
+
+function formatValShort(v, unit) {
+  if (unit === "g") return (v / 1000).toFixed(2) + " kg";
+  if (unit === "cm") return v.toFixed(1) + " cm";
+  if (unit === "h") return v.toFixed(1) + "h";
+  return String(v);
+}
+
+/* ── all-time growth chart (zero baseline) ───────────────────────── */
+function drawGrowthChart(ctx, x, y, w, h, byDay, currentDay, accent, fg, fgDim) {
+  const cardPad = 12;
+
+  // card
+  rr(ctx, x, y, w, h, 10);
+  ctx.fillStyle = "rgba(255,255,255,0.04)"; ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,0.08)"; ctx.lineWidth = 1; rr(ctx, x, y, w, h, 10); ctx.stroke();
+
+  ctx.fillStyle = "#fff"; ctx.font = "bold 12px Inter, sans-serif";
+  ctx.fillText("Growth journey", x + cardPad, y + 18);
+
+  const chartX = x + cardPad + 35;
+  const chartY = y + 30;
+  const chartW = w - cardPad * 2 - 40;
+  const chartH = h - 50;
+
+  if (currentDay < 2) {
+    ctx.fillStyle = fgDim; ctx.font = "12px Inter, sans-serif";
+    ctx.fillText("Collecting data...", chartX + chartW/2 - 40, chartY + chartH/2);
+    return;
+  }
+
+  // collect weight data up to current day
+  const wData = [];
+  let maxW = 0;
+  for (let d = 0; d <= currentDay && d < byDay.length; d++) {
+    const v = byDay[d]?.weightG;
+    wData.push(v);
+    if (v != null && v > maxW) maxW = v;
+  }
+  const yMax = Math.ceil(maxW / 1000) * 1000 || 5000;
+
+  // y-axis labels (from 0)
+  ctx.fillStyle = fgDim; ctx.font = "9px Inter, sans-serif"; ctx.textAlign = "right";
+  const ySteps = 4;
+  for (let i = 0; i <= ySteps; i++) {
+    const val = (yMax / ySteps) * (ySteps - i);
+    const py = chartY + (i / ySteps) * chartH;
+    ctx.fillText((val/1000).toFixed(1)+"kg", chartX - 4, py + 3);
+    // grid
+    ctx.strokeStyle = "rgba(255,255,255,0.05)"; ctx.lineWidth = 0.5;
+    ctx.beginPath(); ctx.moveTo(chartX, py); ctx.lineTo(chartX + chartW, py); ctx.stroke();
+  }
+  ctx.textAlign = "left";
+
+  // x-axis month markers
+  const totalDaysShown = currentDay + 1;
+  ctx.fillStyle = fgDim; ctx.font = "9px Inter, sans-serif";
+  for (let m = 0; m <= Math.ceil(totalDaysShown / 30); m++) {
+    const dx = (m * 30 / totalDaysShown) * chartW;
+    if (dx > chartW) break;
+    ctx.fillText(`${m}m`, chartX + dx, chartY + chartH + 12);
+    ctx.strokeStyle = "rgba(255,255,255,0.04)"; ctx.lineWidth = 0.5;
+    ctx.beginPath(); ctx.moveTo(chartX + dx, chartY); ctx.lineTo(chartX + dx, chartY + chartH); ctx.stroke();
+  }
+
+  // weight line
+  ctx.beginPath(); ctx.strokeStyle = accent; ctx.lineWidth = 2;
+  let started = false; let lastPx, lastPy;
+  for (let d = 0; d < wData.length; d++) {
+    if (wData[d] == null) continue;
+    const px = chartX + (d / totalDaysShown) * chartW;
+    const py = chartY + chartH - (wData[d] / yMax) * chartH;
+    if (!started) { ctx.moveTo(px, py); started = true; }
+    else ctx.lineTo(px, py);
+    lastPx = px; lastPy = py;
+  }
+  ctx.stroke();
+
+  // area fill
+  if (started) {
+    ctx.lineTo(lastPx, chartY + chartH);
+    ctx.lineTo(chartX, chartY + chartH);
+    ctx.closePath();
+    ctx.fillStyle = hexToRgba(accent, 0.08); ctx.fill();
+  }
+
+  // current dot with glow
+  if (lastPx != null) {
+    ctx.fillStyle = hexToRgba(accent, 0.2);
+    ctx.beginPath(); ctx.arc(lastPx, lastPy, 8, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = accent;
+    ctx.beginPath(); ctx.arc(lastPx, lastPy, 4, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = "#fff";
+    ctx.beginPath(); ctx.arc(lastPx, lastPy, 1.5, 0, Math.PI*2); ctx.fill();
+  }
+
+  // height line (secondary - purple)
+  const hData = [];
+  let maxH = 0;
+  for (let d = 0; d <= currentDay && d < byDay.length; d++) {
+    const v = byDay[d]?.heightCm;
+    hData.push(v);
+    if (v != null && v > maxH) maxH = v;
+  }
+  if (maxH > 0) {
+    const hMax = Math.ceil(maxH / 10) * 10 || 80;
+    ctx.beginPath(); ctx.strokeStyle = "#8b5cf6"; ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 3]);
+    started = false;
+    let lx2, ly2;
+    for (let d = 0; d < hData.length; d++) {
+      if (hData[d] == null) continue;
+      const px = chartX + (d / totalDaysShown) * chartW;
+      const py = chartY + chartH - (hData[d] / hMax) * chartH;
+      if (!started) { ctx.moveTo(px, py); started = true; }
+      else ctx.lineTo(px, py);
+      lx2 = px; ly2 = py;
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    if (lx2 != null) {
+      ctx.fillStyle = "#8b5cf6";
+      ctx.beginPath(); ctx.arc(lx2, ly2, 3, 0, Math.PI*2); ctx.fill();
+    }
+
+    // legend
+    ctx.fillStyle = "#8b5cf6"; ctx.font = "10px Inter, sans-serif";
+    ctx.fillText("— height", x + w - cardPad - 55, y + 18);
+  }
+}
+
+/* ── sleep visualization ─────────────────────────────────────────── */
+function drawSleepSection(ctx, x, y, w, h, day, byDay, dayIndex, fg, fgDim) {
+  rr(ctx, x, y, w, h, 10);
+  ctx.fillStyle = "rgba(255,255,255,0.04)"; ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,0.08)"; ctx.lineWidth = 1; rr(ctx, x, y, w, h, 10); ctx.stroke();
+
+  const sleepColor = "#6366f1";
+  const maxPossible = 12;
+
+  // moon icon
+  ctx.fillStyle = "#e2e8f0";
+  ctx.beginPath(); ctx.arc(x + 22, y + h/2, 10, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = "rgba(15,17,23,0.7)";
+  ctx.beginPath(); ctx.arc(x + 26, y + h/2 - 3, 8, 0, Math.PI*2); ctx.fill();
+
+  // title
+  ctx.fillStyle = "#fff"; ctx.font = "bold 12px Inter, sans-serif";
+  ctx.fillText("Night sleep", x + 40, y + 16);
+
+  const sleepH = day.sleepHours ?? 0;
+  const maxEver = day.maxSleepSoFar ?? 0;
+
+  // sleep bar
+  const barX = x + 40;
+  const barY = y + 24;
+  const barW = w - 55;
+  const barH = 14;
+
+  rr(ctx, barX, barY, barW, barH, barH/2);
+  ctx.fillStyle = "rgba(255,255,255,0.06)"; ctx.fill();
+
+  if (sleepH > 0) {
+    const pct = sleepH / maxPossible;
+    rr(ctx, barX, barY, barW * pct, barH, barH/2);
+    ctx.fillStyle = sleepColor; ctx.fill();
+    // glow
+    rr(ctx, barX, barY, barW * pct, barH, barH/2);
+    ctx.fillStyle = hexToRgba(sleepColor, 0.15); ctx.fill();
+  }
+
+  // max marker
+  if (maxEver > 0) {
+    const maxPct = maxEver / maxPossible;
+    const mx = barX + barW * maxPct;
+    ctx.strokeStyle = hexToRgba(sleepColor, 0.5); ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(mx, barY - 2); ctx.lineTo(mx, barY + barH + 2); ctx.stroke();
+  }
+
+  // labels
+  ctx.fillStyle = sleepColor; ctx.font = "bold 14px Inter, sans-serif";
+  ctx.textAlign = "right";
+  ctx.fillText(sleepH > 0 ? `${sleepH}h` : "—", x + w - 14, y + 16);
+  ctx.font = "10px Inter, sans-serif";
+  ctx.fillStyle = fgDim;
+  ctx.fillText(`best: ${maxEver}h`, x + w - 14, y + h - 8);
+  ctx.textAlign = "left";
+
+  // mini sparkline (last 30 days)
+  const sparkY = barY + barH + 6;
+  const sparkH = h - (sparkY - y) - 10;
+  if (sparkH > 8 && dayIndex > 1) {
+    ctx.strokeStyle = hexToRgba(sleepColor, 0.4); ctx.lineWidth = 1;
+    ctx.beginPath();
+    let s = false;
+    const lookback = Math.min(dayIndex + 1, 30);
+    for (let i = 0; i < lookback; i++) {
+      const d = dayIndex - lookback + 1 + i;
+      const sv = byDay[d]?.sleepHours;
+      if (sv == null) continue;
+      const px = barX + (i / (lookback - 1)) * barW;
+      const py = sparkY + sparkH - (sv / maxPossible) * sparkH;
+      if (!s) { ctx.moveTo(px, py); s = true; }
+      else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+  }
+}
+
+/* ── teeth visualization ─────────────────────────────────────────── */
+function drawTeeth(ctx, x, y, w, h, teethCount, accent, fgDim) {
+  rr(ctx, x, y, w, h, 10);
+  ctx.fillStyle = "rgba(255,255,255,0.04)"; ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,0.08)"; ctx.lineWidth = 1; rr(ctx, x, y, w, h, 10); ctx.stroke();
+
+  ctx.fillStyle = "#fff"; ctx.font = "bold 12px Inter, sans-serif";
+  ctx.fillText("Teeth", x + 14, y + h/2 + 4);
+
+  ctx.fillStyle = accent; ctx.font = "bold 20px Inter, sans-serif";
+  ctx.fillText(`${teethCount}`, x + 65, y + h/2 + 5);
+  ctx.fillStyle = fgDim; ctx.font = "11px Inter, sans-serif";
+  ctx.fillText("/20", x + 65 + ctx.measureText(`${teethCount}`).width + 2, y + h/2 + 4);
+
+  // tooth shapes
+  const startX = x + 110;
+  const toothW = 14;
+  const toothH = 18;
+  const gap = 3;
+  const toothY = y + (h - toothH) / 2;
+
+  for (let i = 0; i < 20; i++) {
+    const tx = startX + i * (toothW + gap);
+    if (tx + toothW > x + w - 10) break;
+    const active = i < teethCount;
+
+    // tooth shape (rounded top, flat bottom)
+    ctx.beginPath();
+    ctx.moveTo(tx + 2, toothY + toothH);
+    ctx.lineTo(tx + 2, toothY + 4);
+    ctx.quadraticCurveTo(tx + 2, toothY, tx + toothW/2, toothY);
+    ctx.quadraticCurveTo(tx + toothW - 2, toothY, tx + toothW - 2, toothY + 4);
+    ctx.lineTo(tx + toothW - 2, toothY + toothH);
+    ctx.closePath();
+
+    if (active) {
+      ctx.fillStyle = "#fff";
+      ctx.fill();
+      // subtle glow
+      ctx.strokeStyle = hexToRgba(accent, 0.4);
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = "rgba(255,255,255,0.06)";
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.1)";
+      ctx.lineWidth = 0.5;
+      ctx.stroke();
+    }
+
+    // separator between upper/lower (every 10)
+    if (i === 9) {
+      const sepX = tx + toothW + gap / 2;
+      ctx.strokeStyle = "rgba(255,255,255,0.1)"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(sepX, toothY - 2); ctx.lineTo(sepX, toothY + toothH + 2); ctx.stroke();
+    }
+  }
+}
+
+/* ── feed legend ─────────────────────────────────────────────────── */
+function drawFeedLegend(ctx, x, y, summary, fgDim) {
+  if (!summary?.totalsByType) return;
+  ctx.font = "9px Inter, sans-serif";
+  let ly = y;
+  for (const t of FEED_TYPES) {
+    const ml = summary.totalsByType[t] || 0;
+    if (ml === 0) continue;
+    ctx.fillStyle = COLOURS[t];
+    rr(ctx, x, ly, 8, 8, 2); ctx.fill();
+    ctx.fillStyle = fgDim;
+    const lbl = LABELS[t].length > 14 ? LABELS[t].slice(0, 13) + "…" : LABELS[t];
+    ctx.fillText(`${lbl} ${ml}ml`, x + 12, ly + 8);
+    ly += 13;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════ */
+/*  Main renderer                                                    */
+/* ══════════════════════════════════════════════════════════════════ */
 export function createRenderer(canvas, { accentColor, childName, byDay }) {
   canvas.width  = W;
   canvas.height = H;
   const ctx = canvas.getContext("2d");
 
-  /** Render a single frame for the given dayIndex. */
-  function renderFrame(dayIndex) {
-    const day = byDay[Math.min(dayIndex, byDay.length - 1)];
+  const fg    = "#f4f4f5";
+  const fgDim = "#a1a1aa";
+
+  /** Render a single frame. hourIndex = dayIndex*24 + hourOfDay */
+  function renderFrame(hourIndex) {
+    const dayIndex  = Math.floor(hourIndex / 24);
+    const hourOfDay = hourIndex % 24;
+    const day       = byDay[Math.min(dayIndex, byDay.length - 1)];
     if (!day) return;
 
-    const bg = "#f9fafb";
-    const fg = "#0f172a";
-    const fgDim = "#6b7280";
-    const cardBg = "#ffffff";
-    const cardBorder = "#e5e7eb";
-
-    /* background */
-    ctx.fillStyle = bg;
+    /* ── background (sky gradient) ─────────────────────── */
+    ctx.fillStyle = skyGradient(ctx, hourOfDay);
     ctx.fillRect(0, 0, W, H);
+    drawStars(ctx, hourOfDay);
 
-    /* ── header ─────────────────────────────────────────── */
+    /* ── header bar ────────────────────────────────────── */
+    ctx.fillStyle = "rgba(0,0,0,0.3)";
+    ctx.fillRect(0, 0, W, 60);
+    // accent line at bottom of header
     ctx.fillStyle = accentColor;
-    ctx.fillRect(0, 0, W, 65);
+    ctx.fillRect(0, 58, W, 2);
 
     // baby illustration
     const stage = getBabyStage(dayIndex);
-    drawBabyIllustration(ctx, 50, 35, stage, accentColor);
+    drawBaby(ctx, 40, 30, stage, accentColor);
 
-    ctx.fillStyle = "#fff";
-    ctx.font = "bold 24px Inter, sans-serif";
+    // name
+    ctx.fillStyle = "#fff"; ctx.font = "bold 22px Inter, sans-serif";
     ctx.textBaseline = "middle";
-    ctx.fillText(childName || "Baby", 90, 24);
+    ctx.fillText(childName || "Baby", 80, 22);
 
     // stage label
-    const stageLabels = ["Newborn", "Tiny baby", "Infant", "Sitting up", "Crawling", "Standing"];
-    ctx.font = "13px Inter, sans-serif";
-    ctx.fillStyle = "rgba(255,255,255,0.8)";
-    ctx.fillText(stageLabels[stage] || "", 90, 48);
+    const stageLabels = ["Newborn", "Tiny baby", "Infant", "Sitting up", "Crawler", "Standing"];
+    ctx.font = "12px Inter, sans-serif"; ctx.fillStyle = "rgba(255,255,255,0.6)";
+    ctx.fillText(stageLabels[stage] || "", 80, 44);
 
-    ctx.font = "18px Inter, sans-serif";
-    ctx.fillStyle = "#fff";
-    ctx.textAlign = "right";
-    ctx.fillText(format(day.date, "d MMM yyyy"), W - 20, 22);
+    // right side: date, age, time
+    ctx.fillStyle = "#fff"; ctx.font = "16px Inter, sans-serif"; ctx.textAlign = "right";
+    ctx.fillText(format(day.date, "d MMM yyyy"), W - 70, 18);
 
     const months = Math.floor(dayIndex / 30);
     const days   = dayIndex % 30;
     const ageStr = months > 0 ? `${months}m ${days}d` : `${days}d`;
-    ctx.fillText(`Age: ${ageStr}  ·  Day ${dayIndex + 1}`, W - 20, 48);
+    ctx.fillText(`Age ${ageStr}  ·  ${String(hourOfDay).padStart(2,"0")}:00`, W - 70, 44);
     ctx.textAlign = "left";
 
-    /* ── left: feeding stacked bar ──────────────────────── */
-    const barX = 30;
-    const barY = 85;
-    const barW = 180;
-    const barH = 360;
+    // sun/moon
+    drawCelestial(ctx, W - 35, 30, hourOfDay, accentColor);
 
-    roundRect(ctx, barX - 10, barY - 10, barW + 45, barH + 145, 10, cardBg, cardBorder);
+    /* ── layout regions ────────────────────────────────── */
+    const bottleX = 30;
+    const bottleY = 75;
+    const bottleW = 110;
+    const bottleH = 320;
+    const feedFraction = hourOfDay / 23;
 
-    ctx.fillStyle = fg;
-    ctx.font = "bold 13px Inter, sans-serif";
-    ctx.fillText("Feeding today", barX, barY - 0);
+    // bottle card background
+    rr(ctx, bottleX - 15, bottleY - 10, bottleW + 30, 540, 12);
+    ctx.fillStyle = "rgba(255,255,255,0.03)"; ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,0.06)"; ctx.lineWidth = 1;
+    rr(ctx, bottleX - 15, bottleY - 10, bottleW + 30, 540, 12); ctx.stroke();
 
+    drawBottle(ctx, bottleX, bottleY, bottleW, bottleH, feedFraction, day.summary, accentColor, fg, fgDim);
+
+    // totals below bottle
     const summary = day.summary;
-    const total = summary?.totalsByType
+    const totalMl = summary?.totalsByType
       ? Object.values(summary.totalsByType).reduce((a, b) => a + b, 0)
       : 0;
 
-    if (summary && summary.totalsByType && total > 0) {
-      const maxMl = Math.max(total, 600);
+    ctx.font = "bold 22px Inter, sans-serif"; ctx.fillStyle = "#fff";
+    ctx.textAlign = "center";
+    ctx.fillText(totalMl > 0 ? `${Math.round(totalMl * feedFraction)} ml` : "—", bottleX + bottleW/2, bottleY + bottleH + 25);
 
-      let yOff = barY + barH;
-      for (const t of FEED_TYPES) {
-        const ml = summary.totalsByType[t] || 0;
-        const h  = (ml / maxMl) * barH;
-        if (h < 1) continue;
-        ctx.fillStyle = COLOURS[t];
-        ctx.fillRect(barX, yOff - h, barW, h);
-        yOff -= h;
-      }
+    ctx.font = "12px Inter, sans-serif"; ctx.fillStyle = fgDim;
+    ctx.fillText(day.feedCount > 0 ? `${day.feedCount} feeds` : "", bottleX + bottleW/2, bottleY + bottleH + 45);
+    ctx.textAlign = "left";
 
-      /* total label */
-      ctx.fillStyle = fg;
-      ctx.font = "bold 18px Inter, sans-serif";
-      ctx.fillText(`${total} ml`, barX, barY + barH + 22);
+    // feed legend
+    drawFeedLegend(ctx, bottleX - 10, bottleY + bottleH + 60, day.summary, fgDim);
 
-      ctx.font = "13px Inter, sans-serif";
-      ctx.fillStyle = fgDim;
-      ctx.fillText(`${day.feedCount} feeds`, barX, barY + barH + 42);
-    } else {
-      ctx.fillStyle = fgDim;
-      ctx.font = "13px Inter, sans-serif";
-      ctx.fillText("No data", barX + 50, barY + barH / 2);
-    }
+    /* ── right column ──────────────────────────────────── */
+    const rX = 175;
+    const rW = W - rX - 20;
 
-    /* bar outline */
-    ctx.strokeStyle = cardBorder;
-    ctx.lineWidth = 1;
-    ctx.strokeRect(barX, barY + 10, barW, barH);
-
-    /* mini legend */
-    let legendY = barY + barH + 58;
-    ctx.font = "10px Inter, sans-serif";
-    for (const t of FEED_TYPES) {
-      if (summary?.totalsByType?.[t]) {
-        ctx.fillStyle = COLOURS[t];
-        ctx.fillRect(barX, legendY, 8, 8);
-        ctx.fillStyle = fgDim;
-        const lbl = LABELS[t].length > 16 ? LABELS[t].slice(0, 15) + "…" : LABELS[t];
-        ctx.fillText(lbl, barX + 12, legendY + 8);
-        legendY += 13;
-      }
-    }
-
-    /* ── top-right: weight trend (last 60 days) ─────────── */
-    const rX = 270;
-    const chartW = W - rX - 20;
-
-    const wY = 85;
-    const wH = 175;
-    roundRect(ctx, rX, wY - 10, chartW, wH + 15, 10, cardBg, cardBorder);
-
-    ctx.fillStyle = fg;
-    ctx.font = "bold 13px Inter, sans-serif";
-    ctx.fillText("Weight (last 60 days)", rX + 15, wY + 4);
-
-    const weightData = collectData(byDay, dayIndex, 60, d => d.weightG);
-    drawMiniChart(ctx, rX + 50, wY + 20, chartW - 70, wH - 35, weightData, accentColor, fg, fgDim, "g");
-
+    // weight gauge
+    const wgY = 72;
+    const expectedWeight = 9500; // ~9.5kg at 12 months (approx)
     if (day.weightG != null) {
-      ctx.fillStyle = accentColor;
-      ctx.font = "bold 20px Inter, sans-serif";
-      ctx.textAlign = "right";
-      ctx.fillText(`${(day.weightG / 1000).toFixed(2)} kg`, rX + chartW - 15, wY + 6);
-      ctx.textAlign = "left";
+      drawGauge(ctx, rX, wgY, rW, 16, day.weightG, expectedWeight, accentColor, "Weight", "g", fg, fgDim);
     }
 
-    /* ── mid-right: height trend (last 60 days) ────────── */
-    const hY = wY + wH + 15;
-    const hH = 155;
-    roundRect(ctx, rX, hY - 10, chartW, hH + 15, 10, cardBg, cardBorder);
-
-    ctx.fillStyle = fg;
-    ctx.font = "bold 13px Inter, sans-serif";
-    ctx.fillText("Height (last 60 days)", rX + 15, hY + 4);
-
-    const heightData = collectData(byDay, dayIndex, 60, d => d.heightCm);
-    drawMiniChart(ctx, rX + 50, hY + 20, chartW - 70, hH - 35, heightData, "#8b5cf6", fg, fgDim, "cm");
-
+    // height gauge
+    const hgY = 110;
+    const expectedHeight = 76; // ~76cm at 12 months
     if (day.heightCm != null) {
-      ctx.fillStyle = "#8b5cf6";
-      ctx.font = "bold 20px Inter, sans-serif";
-      ctx.textAlign = "right";
-      ctx.fillText(`${day.heightCm} cm`, rX + chartW - 15, hY + 6);
-      ctx.textAlign = "left";
+      drawGauge(ctx, rX, hgY, rW, 16, day.heightCm, expectedHeight, "#8b5cf6", "Height", "cm", fg, fgDim);
     }
 
-    /* ── bottom-right: sleep trend (last 30 days) ───────── */
-    const sY = hY + hH + 15;
-    const sH = 155;
-    roundRect(ctx, rX, sY - 10, chartW, sH + 15, 10, cardBg, cardBorder);
+    // growth chart (all-time, from zero)
+    const gcY = 145;
+    const gcH = 260;
+    drawGrowthChart(ctx, rX, gcY, rW, gcH, byDay, dayIndex, accentColor, fg, fgDim);
 
-    ctx.fillStyle = fg;
-    ctx.font = "bold 13px Inter, sans-serif";
-    ctx.fillText("Night sleep (last 30 days)", rX + 15, sY + 4);
+    // sleep section
+    const slY = gcY + gcH + 12;
+    const slH = 85;
+    drawSleepSection(ctx, rX, slY, rW, slH, day, byDay, dayIndex, fg, fgDim);
 
-    const sleepData = collectData(byDay, dayIndex, 30, d => d.sleepHours);
-    drawMiniChart(ctx, rX + 50, sY + 20, chartW - 70, sH - 35, sleepData, "#6366f1", fg, fgDim, "h");
-
-    // current night sleep
-    if (day.sleepHours != null) {
-      ctx.fillStyle = "#6366f1";
-      ctx.font = "bold 16px Inter, sans-serif";
-      ctx.textAlign = "right";
-      ctx.fillText(`${day.sleepHours}h`, rX + chartW - 15, sY + 6);
-      ctx.textAlign = "left";
-    }
-
-    // max night sleep ever
-    if (day.maxSleepSoFar > 0) {
-      ctx.fillStyle = "#6366f1";
-      ctx.font = "13px Inter, sans-serif";
-      ctx.textAlign = "right";
-      ctx.fillText(`max: ${day.maxSleepSoFar}h`, rX + chartW - 15, sY + sH - 2);
-      ctx.textAlign = "left";
-    }
-
-    /* ── bottom bar: teeth ──────────────────────────────── */
-    const tbY = sY + sH + 15;
-    const tbH = H - tbY - 10;
-    roundRect(ctx, 20, tbY, W - 40, tbH, 10, cardBg, cardBorder);
-
-    ctx.fillStyle = fg;
-    ctx.font = "bold 14px Inter, sans-serif";
-    ctx.fillText("Teeth", 40, tbY + 20);
-
-    const tc = day.teethCount || 0;
-    ctx.fillStyle = accentColor;
-    ctx.font = "bold 26px Inter, sans-serif";
-    ctx.fillText(`${tc}/20`, 95, tbY + 22);
-
-    /* draw tooth squares */
-    const toothSize = 16;
-    const toothGap  = 5;
-    const toothStartX = 170;
-    const toothY = tbY + 8;
-    for (let i = 0; i < 20; i++) {
-      const tx = toothStartX + i * (toothSize + toothGap);
-      ctx.fillStyle = i < tc ? accentColor : "#e5e7eb";
-      roundRect(ctx, tx, toothY, toothSize, toothSize + 4, 3, ctx.fillStyle);
-    }
-
-    /* summary stats on right side of bottom bar */
-    const statsX = W - 320;
-    ctx.font = "12px Inter, sans-serif";
-    ctx.fillStyle = fgDim;
-    const stats = [];
-    if (day.weightG != null) stats.push(`Weight: ${(day.weightG / 1000).toFixed(2)} kg`);
-    if (day.heightCm != null) stats.push(`Height: ${day.heightCm} cm`);
-    if (total > 0) stats.push(`Milk: ${total} ml (${day.feedCount} feeds)`);
-    if (day.sleepHours != null) stats.push(`Sleep: ${day.sleepHours}h`);
-    ctx.fillText(stats.join("  ·  "), statsX, tbY + 20);
+    // teeth
+    const teethY = slY + slH + 12;
+    const teethH = H - teethY - 10;
+    drawTeeth(ctx, rX, teethY, rW, Math.max(teethH, 40), day.teethCount || 0, accentColor, fgDim);
   }
 
   return { renderFrame };
-}
-
-/* ── helpers ──────────────────────────────────────────────────── */
-function collectData(byDay, dayIndex, lookback, getter) {
-  const data = [];
-  for (let d = Math.max(0, dayIndex - lookback + 1); d <= dayIndex; d++) {
-    const val = byDay[d] ? getter(byDay[d]) : null;
-    data.push(val != null ? val : null);
-  }
-  return data;
-}
-
-function roundRect(ctx, x, y, w, h, r, fill, stroke) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + w - r, y);
-  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-  ctx.lineTo(x + w, y + h - r);
-  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-  ctx.lineTo(x + r, y + h);
-  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-  ctx.lineTo(x, y + r);
-  ctx.quadraticCurveTo(x, y, x + r, y);
-  ctx.closePath();
-  if (fill) {
-    ctx.fillStyle = fill;
-    ctx.fill();
-  }
-  if (stroke) {
-    ctx.strokeStyle = stroke;
-    ctx.lineWidth = 1;
-    ctx.stroke();
-  }
-}
-
-function drawMiniChart(ctx, x, y, w, h, data, color, fg, fgDim, unit) {
-  const vals = data.filter(v => v != null);
-  if (vals.length < 2) {
-    ctx.fillStyle = fgDim;
-    ctx.font = "13px Inter, sans-serif";
-    ctx.fillText("Not enough data", x + w / 2 - 45, y + h / 2);
-    return;
-  }
-
-  const min = Math.min(...vals);
-  const max = Math.max(...vals);
-  const range = max - min || 1;
-
-  /* axis labels */
-  ctx.fillStyle = fgDim;
-  ctx.font = "10px Inter, sans-serif";
-  ctx.textAlign = "right";
-  ctx.fillText(formatVal(max, unit), x - 4, y + 8);
-  ctx.fillText(formatVal(min, unit), x - 4, y + h);
-  ctx.textAlign = "left";
-
-  /* grid lines */
-  ctx.strokeStyle = hexToRgba(fgDim, 0.15);
-  ctx.lineWidth = 0.5;
-  for (let i = 0; i <= 4; i++) {
-    const gy = y + (h * i) / 4;
-    ctx.beginPath();
-    ctx.moveTo(x, gy);
-    ctx.lineTo(x + w, gy);
-    ctx.stroke();
-  }
-
-  /* line */
-  ctx.beginPath();
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 2;
-  let started = false;
-  let lastPx, lastPy;
-  for (let i = 0; i < data.length; i++) {
-    if (data[i] == null) continue;
-    const px = x + (i / (data.length - 1)) * w;
-    const py = y + h - ((data[i] - min) / range) * h;
-    if (!started) { ctx.moveTo(px, py); started = true; }
-    else ctx.lineTo(px, py);
-    lastPx = px;
-    lastPy = py;
-  }
-  ctx.stroke();
-
-  /* dot at current value */
-  if (lastPx != null) {
-    ctx.beginPath();
-    ctx.arc(lastPx, lastPy, 4, 0, Math.PI * 2);
-    ctx.fillStyle = color;
-    ctx.fill();
-    ctx.strokeStyle = "#fff";
-    ctx.lineWidth = 2;
-    ctx.stroke();
-  }
-
-  /* fill area under line */
-  ctx.beginPath();
-  started = false;
-  for (let i = 0; i < data.length; i++) {
-    if (data[i] == null) continue;
-    const px = x + (i / (data.length - 1)) * w;
-    const py = y + h - ((data[i] - min) / range) * h;
-    if (!started) { ctx.moveTo(px, py); started = true; }
-    else ctx.lineTo(px, py);
-  }
-  ctx.lineTo(lastPx, y + h);
-  ctx.lineTo(x, y + h);
-  ctx.closePath();
-  ctx.fillStyle = hexToRgba(color, 0.08);
-  ctx.fill();
-}
-
-function formatVal(v, unit) {
-  if (unit === "g")  return (v / 1000).toFixed(1) + "kg";
-  if (unit === "cm") return v.toFixed(1) + "cm";
-  return v.toFixed(1) + unit;
 }

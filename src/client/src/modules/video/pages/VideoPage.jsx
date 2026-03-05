@@ -12,7 +12,7 @@ import { prepareData } from "../dataPrep.js";
 import { createRenderer } from "../VideoRenderer.js";
 
 const FPS = 30;
-const FRAME_MS = Math.round(1000 / FPS);   // ~33ms per frame
+const FRAME_MS = Math.round(1000 / FPS); // ~33ms
 
 export default function VideoPage() {
   const { birthTs, childName = "", childSurname = "" } = loadConfig();
@@ -22,10 +22,11 @@ export default function VideoPage() {
   const [progress, setProgress] = useState(0);
   const [videoUrl, setVideoUrl] = useState(null);
   const [errMsg, setErrMsg]     = useState("");
-  const [speed, setSpeed]       = useState("normal"); // fast | normal | detailed
+  const [speed, setSpeed]       = useState("normal");
 
-  const canvasRef = useRef(null);
-  const dataRef   = useRef(null);
+  const canvasRef  = useRef(null);
+  const dataRef    = useRef(null);
+  const cancelRef  = useRef(false);
 
   /* ── fetch all data on mount ──────────────────────────── */
   useEffect(() => {
@@ -56,6 +57,7 @@ export default function VideoPage() {
     const data = dataRef.current;
     if (!data) return;
 
+    cancelRef.current = false;
     setStatus("generating");
     setProgress(0);
     setVideoUrl(null);
@@ -68,76 +70,82 @@ export default function VideoPage() {
       byDay      : data.byDay,
     });
 
-    // hold frames per day: determines video speed
-    const holdMap = { fast: 4, normal: 10, detailed: 18 };
-    const holdFrames = holdMap[speed] || 10;
-    const totalDays = data.totalDays;
+    /*
+     * Frames-per-day controls how many hours we render per day.
+     *   fast:     6 frames/day (every 4h) → ~20% of full render time
+     *   normal:  12 frames/day (every 2h) → bottle fills smoothly
+     *   detailed: 24 frames/day (every 1h) → full day/night cycle
+     *
+     * Each unique frame is held for exactly 1 video frame at 30 FPS.
+     * With real ~33ms delays, MediaRecorder produces proper 30 FPS output.
+     */
+    const hoursPerFrame = speed === "fast" ? 4 : speed === "detailed" ? 1 : 2;
+    const framesPerDay  = 24 / hoursPerFrame;
+    const totalFrames   = data.totalDays * framesPerDay;
 
-    const stream  = canvas.captureStream(0);
-    const chunks  = [];
+    const stream = canvas.captureStream(0);
+    const chunks = [];
 
-    /* pick supported codec */
     const codecs = [
       "video/webm;codecs=vp9",
       "video/webm;codecs=vp8",
       "video/webm",
     ];
     const mimeType = codecs.find(c => MediaRecorder.isTypeSupported(c)) || "video/webm";
-    const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 4_000_000 });
+    const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 5_000_000 });
 
     recorder.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
-
-    const done = new Promise(resolve => {
-      recorder.onstop = () => resolve();
-    });
-
+    const done = new Promise(resolve => { recorder.onstop = () => resolve(); });
     recorder.start();
 
     const track = stream.getVideoTracks()[0];
 
-    /* render one frame per day, hold for multiple frames with real delays */
-    for (let d = 0; d < totalDays; d++) {
-      renderFrame(d);
+    for (let f = 0; f < totalFrames; f++) {
+      if (cancelRef.current) break;
 
-      for (let h = 0; h < holdFrames; h++) {
-        if (track.requestFrame) track.requestFrame();
-        // real delay so MediaRecorder assigns proper timestamps
-        await new Promise(r => setTimeout(r, FRAME_MS));
-      }
+      const hourIndex = f * hoursPerFrame; // map frame → hour offset
+      renderFrame(hourIndex);
 
-      // update progress every 5 days to avoid excessive re-renders
-      if (d % 5 === 0 || d === totalDays - 1) {
-        setProgress((d + 1) / totalDays);
+      if (track.requestFrame) track.requestFrame();
+      await new Promise(r => setTimeout(r, FRAME_MS));
+
+      if (f % 10 === 0 || f === totalFrames - 1) {
+        setProgress((f + 1) / totalFrames);
       }
     }
 
     recorder.stop();
     await done;
 
-    const blob = new Blob(chunks, { type: mimeType });
-    setVideoUrl(URL.createObjectURL(blob));
-    setStatus("done");
+    if (!cancelRef.current) {
+      const blob = new Blob(chunks, { type: mimeType });
+      setVideoUrl(URL.createObjectURL(blob));
+      setStatus("done");
+    } else {
+      setStatus("idle");
+    }
   }, [name, speed]);
 
-  /* estimated generation time */
-  const estTime = dataRef.current
-    ? Math.round(dataRef.current.totalDays * (speed === "fast" ? 4 : speed === "detailed" ? 18 : 10) * FRAME_MS / 1000)
-    : null;
+  const cancel = useCallback(() => {
+    cancelRef.current = true;
+  }, []);
 
-  /* estimated video duration */
-  const estVideo = dataRef.current
-    ? Math.round(dataRef.current.totalDays * (speed === "fast" ? 4 : speed === "detailed" ? 18 : 10) / FPS)
-    : null;
+  /* estimates */
+  const totalDays = dataRef.current?.totalDays || 0;
+  const hoursPerFrame = speed === "fast" ? 4 : speed === "detailed" ? 1 : 2;
+  const framesPerDay  = 24 / hoursPerFrame;
+  const totalFrames   = totalDays * framesPerDay;
+  const estGenSec     = Math.round(totalFrames * FRAME_MS / 1000);
+  const estVideoSec   = Math.round(totalFrames / FPS);
 
-  /* ── render ───────────────────────────────────────────── */
   return (
     <>
       <Header />
       <main className="video-wrap card" style={{ padding: 20 }}>
         <h2 style={{ marginTop: 0 }}>Video Timelapse</h2>
         <p style={{ color: "#6b7280" }}>
-          Generate a video showing your baby's complete growth journey — feeding, weight, height,
-          sleep patterns, and milestones.
+          Generate a cinematic video of your baby's complete growth journey —
+          feeding, weight, height, sleep, teeth, and milestones.
         </p>
 
         {status === "error" && (
@@ -150,26 +158,28 @@ export default function VideoPage() {
           <>
             <div style={{ marginBottom: 16 }}>
               <label style={{ fontWeight: 600, marginRight: 12, fontSize: 14 }}>Speed:</label>
-              {["fast", "normal", "detailed"].map(s => (
-                <label key={s} style={{ marginRight: 16, cursor: "pointer", fontSize: 14 }}>
+              {[
+                { val: "fast",     label: "Fast (every 4h)" },
+                { val: "normal",   label: "Normal (every 2h)" },
+                { val: "detailed", label: "Detailed (every 1h)" },
+              ].map(({ val, label }) => (
+                <label key={val} style={{ marginRight: 16, cursor: "pointer", fontSize: 14 }}>
                   <input
-                    type="radio"
-                    name="speed"
-                    value={s}
-                    checked={speed === s}
-                    onChange={() => setSpeed(s)}
+                    type="radio" name="speed" value={val}
+                    checked={speed === val}
+                    onChange={() => setSpeed(val)}
                     style={{ marginRight: 4 }}
                   />
-                  {s === "fast" ? "Fast (~0.13s/day)" : s === "normal" ? "Normal (~0.33s/day)" : "Detailed (~0.6s/day)"}
+                  {label}
                 </label>
               ))}
-              {estTime != null && (
-                <span style={{ color: "#6b7280", fontSize: 13 }}>
-                  {" "}— est. ~{estTime}s to generate, ~{estVideo}s video
-                  ({dataRef.current?.totalDays} days)
-                </span>
-              )}
             </div>
+            {totalDays > 0 && (
+              <p style={{ color: "#6b7280", fontSize: 13, marginBottom: 12 }}>
+                {totalDays} days · {totalFrames} frames · ~{estGenSec}s to generate ·
+                ~{estVideoSec}s ({Math.round(estVideoSec / 60)}min) video at 30 FPS
+              </p>
+            )}
             <button className="btn" onClick={generate}>
               {status === "done" ? "Regenerate Video" : "Generate Video"}
             </button>
@@ -178,14 +188,20 @@ export default function VideoPage() {
 
         {status === "generating" && (
           <>
-            <p>Generating... {Math.round(progress * 100)}%</p>
+            <p>Generating at 30 FPS... {Math.round(progress * 100)}%</p>
             <div className="progress-bar">
               <div className="fill" style={{ width: `${progress * 100}%` }} />
             </div>
+            <button
+              className="btn"
+              onClick={cancel}
+              style={{ marginTop: 8, background: "#6b7280" }}
+            >
+              Cancel
+            </button>
           </>
         )}
 
-        {/* canvas used for rendering (shown during generation) */}
         <canvas
           ref={canvasRef}
           style={{
