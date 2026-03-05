@@ -1,110 +1,70 @@
-import React, { useMemo } from "react";
-import { Line } from "react-chartjs-2";
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-} from "chart.js";
-import { accentColor } from "../../../theme.js";
+import React from "react";
 
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-);
+/**
+ * Parent mood grid — replaces the old sleep-hours line chart.
+ * Shows a face per day based on the baby's longest sleep stretch:
+ *   < 3 h  → exhausted
+ *   3-5 h  → tired
+ *   5-7 h  → okay
+ *   7+ h   → happy / well-rested
+ */
 
-/** Compute 7-day centred moving average, skipping nulls. */
-function movingAvg(arr, window = 7) {
-  const half = Math.floor(window / 2);
-  return arr.map((_, i) => {
-    let sum = 0;
-    let count = 0;
-    for (let j = i - half; j <= i + half; j++) {
-      if (j >= 0 && j < arr.length && arr[j] != null) {
-        sum += arr[j];
-        count++;
-      }
-    }
-    return count >= 1 ? +(sum / count).toFixed(2) : null;
-  });
+function moodFor(hours) {
+  if (hours == null) return { emoji: "➖", label: "no data", color: "#9ca3af" };
+  if (hours < 3)     return { emoji: "😫", label: "exhausted", color: "#ef4444" };
+  if (hours < 5)     return { emoji: "😴", label: "tired",     color: "#f59e0b" };
+  if (hours < 7)     return { emoji: "🙂", label: "okay",      color: "#3b82f6" };
+  return                     { emoji: "😊", label: "well-rested", color: "#22c55e" };
 }
 
-/** Longest uninterrupted *sleep-time* per day (hours). */
 export default function NightGapChart({ labels = [], gaps = [] }) {
-  const accent = accentColor();
-  const avg = useMemo(() => movingAvg(gaps, 7), [gaps]);
-
-  const data = {
-    labels,
-    datasets: [
-      {
-        label           : "7-day average",
-        data            : avg,
-        borderColor     : accent,
-        backgroundColor : accent,
-        borderWidth     : 3,
-        tension         : 0.35,
-        pointRadius     : 0,
-        pointHoverRadius: 4,
-        spanGaps        : true,
-        order           : 1,
-      },
-      {
-        label           : "Raw sleep (h)",
-        data            : gaps,
-        borderColor     : accent + "40",
-        backgroundColor : accent + "60",
-        borderWidth     : 1,
-        tension         : 0.15,
-        pointRadius     : 2,
-        pointHoverRadius: 4,
-        spanGaps        : true,
-        order           : 2,
-      },
-    ],
-  };
-
-  const options = {
-    responsive         : true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { position: "top" },
-      tooltip: {
-        callbacks: {
-          label(ctx) {
-            const i = ctx.dataIndex;
-            const raw = gaps[i] != null ? gaps[i].toFixed(1) + "h" : "—";
-            const ma  = avg[i]  != null ? avg[i].toFixed(1) + "h"  : "—";
-            if (ctx.datasetIndex === 0) return `Avg: ${ma}  (raw: ${raw})`;
-            return `Raw: ${raw}`;
-          },
-        },
-      },
-    },
-    scales: {
-      y: {
-        beginAtZero: true,
-        max        : 12,
-        ticks      : { precision: 0 },
-        title      : { display: true, text: "Hours" },
-      },
-      x: { title: { display: true, text: "Day" } },
-    },
-  };
-
   return (
-    <div className="card" style={{ height: 260 }}>
-      <h3>Longest sleep time (hours)</h3>
-      <Line data={data} options={options} />
+    <div className="card">
+      <h3>Parent mood (based on longest baby sleep)</h3>
+
+      {/* legend */}
+      <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", fontSize: ".8rem", marginBottom: ".75rem", opacity: 0.75 }}>
+        <span>😫 &lt;3 h</span>
+        <span>😴 3-5 h</span>
+        <span>🙂 5-7 h</span>
+        <span>😊 7+ h</span>
+      </div>
+
+      {/* grid of days */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fill, minmax(62px, 1fr))",
+        gap: "6px",
+      }}>
+        {labels.map((lbl, i) => {
+          const h = gaps[i];
+          const { emoji, label, color } = moodFor(h);
+          return (
+            <div
+              key={i}
+              title={`${lbl}: ${h != null ? h.toFixed(1) + "h" : "no data"} — ${label}`}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                padding: "6px 2px",
+                borderRadius: 6,
+                background: color + "18",
+                border: `1px solid ${color}40`,
+                lineHeight: 1.2,
+              }}
+            >
+              <span style={{ fontSize: "1.5rem" }}>{emoji}</span>
+              <span style={{ fontSize: ".65rem", opacity: 0.7, marginTop: 2 }}>{lbl}</span>
+              {h != null && (
+                <span style={{ fontSize: ".65rem", fontWeight: 600, color }}>
+                  {h.toFixed(1)}h
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

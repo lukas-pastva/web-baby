@@ -12,6 +12,7 @@ import api           from "../api.js";
 import FeedForm      from "../components/FeedForm.jsx";
 import FeedTable     from "../components/FeedTable.jsx";
 import SummaryChart  from "../components/SummaryChart.jsx";
+import BottleVisual  from "../components/BottleVisual.jsx";
 import { loadConfig } from "../../../config.js";
 
 /* Milk types – only these count towards eaten/should-have-eaten statistics */
@@ -134,17 +135,20 @@ export default function MilkingDashboard() {
         {/* glance table with WHO vs Personalized */}
         <section className="card" style={{ marginBottom:"1.5rem" }}>
           <h3 style={{ marginTop:0 }}>Today at a glance</h3>
-          <table style={{ width:"100%", borderCollapse:"collapse", lineHeight:1.3 }}>
-            <tbody>
-              <tr><td><strong>Should eat today (WHO)</strong></td><td>{whoToday || "—"}&nbsp;ml</td></tr>
-              <tr><td><strong>Should eat today (personalized)</strong></td><td>{recToday || "—"}&nbsp;ml</td></tr>
-              {recPer > 0 && <tr><td><strong>Suggested per feed</strong></td><td>{recPer}&nbsp;ml</td></tr>}
-              <tr><td><strong>Should have eaten by now</strong></td><td>{targetSoFar != null ? targetSoFar : "—"}&nbsp;ml</td></tr>
-              <tr><td><strong>Eaten so far</strong></td><td>{actualSoFar}&nbsp;ml</td></tr>
-              <tr><td><strong>Didn’t eat for</strong></td><td>{lastFeedAt ? didntEat : <em>No feeds logged yet</em>}</td></tr>
-              <tr><td><strong>Eaten by now yesterday</strong></td><td>{feedsY.length ? actualY : "—"}&nbsp;ml</td></tr>
-            </tbody>
-          </table>
+          <div style={{ display:"flex", alignItems:"center", gap:"1.5rem", flexWrap:"wrap" }}>
+            <BottleVisual eatenMl={actualSoFar} />
+            <table style={{ flex:1, borderCollapse:"collapse", lineHeight:1.3 }}>
+              <tbody>
+                <tr><td><strong>Should eat today (WHO)</strong></td><td>{whoToday || "—"}&nbsp;ml</td></tr>
+                <tr><td><strong>Should eat today (personalized)</strong></td><td>{recToday || "—"}&nbsp;ml</td></tr>
+                {recPer > 0 && <tr><td><strong>Suggested per feed</strong></td><td>{recPer}&nbsp;ml</td></tr>}
+                <tr><td><strong>Should have eaten by now</strong></td><td>{targetSoFar != null ? targetSoFar : "—"}&nbsp;ml</td></tr>
+                <tr><td><strong>Eaten so far</strong></td><td>{actualSoFar}&nbsp;ml</td></tr>
+                <tr><td><strong>Didn’t eat for</strong></td><td>{lastFeedAt ? didntEat : <em>No feeds logged yet</em>}</td></tr>
+                <tr><td><strong>Eaten by now yesterday</strong></td><td>{feedsY.length ? actualY : "—"}&nbsp;ml</td></tr>
+              </tbody>
+            </table>
+          </div>
         </section>
 
         {/* chart + table */}
