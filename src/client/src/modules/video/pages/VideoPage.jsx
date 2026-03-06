@@ -71,17 +71,14 @@ export default function VideoPage() {
     });
 
     /*
-     * Frames-per-day controls how many hours we render per day.
-     *   fast:     6 frames/day (every 4h) → ~20% of full render time
-     *   normal:  12 frames/day (every 2h) → bottle fills smoothly
-     *   detailed: 24 frames/day (every 1h) → full day/night cycle
-     *
-     * Each unique frame is held for exactly 1 video frame at 30 FPS.
-     * With real ~33ms delays, MediaRecorder produces proper 30 FPS output.
+     * One frame per day – each day is held for N video frames to control
+     * playback speed.
+     *   fast:     1 video frame  per day
+     *   normal:   2 video frames per day
+     *   detailed: 4 video frames per day
      */
-    const hoursPerFrame = speed === "fast" ? 4 : speed === "detailed" ? 1 : 2;
-    const framesPerDay  = 24 / hoursPerFrame;
-    const totalFrames   = data.totalDays * framesPerDay;
+    const holdFrames  = speed === "fast" ? 1 : speed === "detailed" ? 4 : 2;
+    const totalFrames = data.totalDays * holdFrames;
 
     const stream = canvas.captureStream(0);
     const chunks = [];
@@ -103,8 +100,8 @@ export default function VideoPage() {
     for (let f = 0; f < totalFrames; f++) {
       if (cancelRef.current) break;
 
-      const hourIndex = f * hoursPerFrame; // map frame → hour offset
-      renderFrame(hourIndex);
+      const dayIndex = Math.floor(f / holdFrames);
+      renderFrame(dayIndex);
 
       if (track.requestFrame) track.requestFrame();
       await new Promise(r => setTimeout(r, FRAME_MS));
@@ -132,9 +129,8 @@ export default function VideoPage() {
 
   /* estimates */
   const totalDays = dataRef.current?.totalDays || 0;
-  const hoursPerFrame = speed === "fast" ? 4 : speed === "detailed" ? 1 : 2;
-  const framesPerDay  = 24 / hoursPerFrame;
-  const totalFrames   = totalDays * framesPerDay;
+  const holdFrames   = speed === "fast" ? 1 : speed === "detailed" ? 4 : 2;
+  const totalFrames  = totalDays * holdFrames;
   const estGenSec     = Math.round(totalFrames * FRAME_MS / 1000);
   const estVideoSec   = Math.round(totalFrames / FPS);
 
@@ -159,9 +155,9 @@ export default function VideoPage() {
             <div style={{ marginBottom: 16 }}>
               <label style={{ fontWeight: 600, marginRight: 12, fontSize: 14 }}>Speed:</label>
               {[
-                { val: "fast",     label: "Fast (every 4h)" },
-                { val: "normal",   label: "Normal (every 2h)" },
-                { val: "detailed", label: "Detailed (every 1h)" },
+                { val: "fast",     label: "Fast (1 frame/day)" },
+                { val: "normal",   label: "Normal (2 frames/day)" },
+                { val: "detailed", label: "Detailed (4 frames/day)" },
               ].map(({ val, label }) => (
                 <label key={val} style={{ marginRight: 16, cursor: "pointer", fontSize: 14 }}>
                   <input

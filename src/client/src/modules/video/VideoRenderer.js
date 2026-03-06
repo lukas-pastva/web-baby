@@ -671,17 +671,14 @@ export function createRenderer(canvas, { accentColor, childName, byDay }) {
   const fg    = "#f4f4f5";
   const fgDim = "#a1a1aa";
 
-  /** Render a single frame. hourIndex = dayIndex*24 + hourOfDay */
-  function renderFrame(hourIndex) {
-    const dayIndex  = Math.floor(hourIndex / 24);
-    const hourOfDay = hourIndex % 24;
-    const day       = byDay[Math.min(dayIndex, byDay.length - 1)];
+  /** Render a single frame for the given dayIndex. */
+  function renderFrame(dayIndex) {
+    const day = byDay[Math.min(dayIndex, byDay.length - 1)];
     if (!day) return;
 
-    /* ── background (sky gradient) ─────────────────────── */
-    ctx.fillStyle = skyGradient(ctx, hourOfDay);
+    /* ── background (static dark) ─────────────────────── */
+    ctx.fillStyle = "#111827";
     ctx.fillRect(0, 0, W, H);
-    drawStars(ctx, hourOfDay);
 
     /* ── header bar ────────────────────────────────────── */
     ctx.fillStyle = "rgba(0,0,0,0.3)";
@@ -704,21 +701,17 @@ export function createRenderer(canvas, { accentColor, childName, byDay }) {
     ctx.font = "12px Inter, sans-serif"; ctx.fillStyle = "rgba(255,255,255,0.6)";
     ctx.fillText(stageLabels[stage] || "", 80, 44);
 
-    // right side: date, age, time
+    // right side: date, age
     ctx.fillStyle = "#fff"; ctx.font = "16px Inter, sans-serif"; ctx.textAlign = "right";
-    ctx.fillText(format(day.date, "d MMM yyyy"), W - 70, 18);
+    ctx.fillText(format(day.date, "d MMM yyyy"), W - 20, 18);
 
     const months = Math.floor(dayIndex / 30);
     const days   = dayIndex % 30;
     const ageStr = months > 0 ? `${months}m ${days}d` : `${days}d`;
-    ctx.fillText(`Age ${ageStr}  ·  ${String(hourOfDay).padStart(2,"0")}:00`, W - 70, 44);
+    ctx.fillText(`Age ${ageStr}`, W - 20, 44);
     ctx.textAlign = "left";
 
-    // sun/moon
-    drawCelestial(ctx, W - 35, 30, hourOfDay, accentColor);
-
     /* ── layout regions ────────────────────────────────── */
-    const feedFraction = hourOfDay / 23;
 
     // scale bottle size with total ml eaten (0→smallest, 800ml→full)
     const totalMlRaw = day.summary?.totalsByType
@@ -736,17 +729,14 @@ export function createRenderer(canvas, { accentColor, childName, byDay }) {
     ctx.strokeStyle = "rgba(255,255,255,0.06)"; ctx.lineWidth = 1;
     rr(ctx, 15, 65, 140, 540, 12); ctx.stroke();
 
-    drawBottle(ctx, bottleX, bottleY, bottleW, bottleH, feedFraction, day.summary, accentColor, fg, fgDim);
+    drawBottle(ctx, bottleX, bottleY, bottleW, bottleH, 1, day.summary, accentColor, fg, fgDim);
 
     // totals below bottle
     const summary = day.summary;
-    const totalMl = summary?.totalsByType
-      ? Object.values(summary.totalsByType).reduce((a, b) => a + b, 0)
-      : 0;
 
     ctx.font = "bold 22px Inter, sans-serif"; ctx.fillStyle = "#fff";
     ctx.textAlign = "center";
-    ctx.fillText(totalMl > 0 ? `${Math.round(totalMl * feedFraction)} ml` : "—", bottleX + bottleW/2, bottleY + bottleH + 25);
+    ctx.fillText(totalMlRaw > 0 ? `${Math.round(totalMlRaw)} ml` : "—", bottleX + bottleW/2, bottleY + bottleH + 25);
 
     ctx.font = "12px Inter, sans-serif"; ctx.fillStyle = fgDim;
     ctx.fillText(day.feedCount > 0 ? `${day.feedCount} feeds` : "", bottleX + bottleW/2, bottleY + bottleH + 45);
